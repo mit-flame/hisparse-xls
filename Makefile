@@ -1,0 +1,212 @@
+##########################################
+# edit paths here
+IR_PATH := ~/xls/bazel-bin/xls/dslx/ir_convert/ir_converter_main
+OPT_PATH := ~/xls/bazel-bin/xls/tools/opt_main
+CODEGEN_PATH := ~/xls/bazel-bin/xls/tools/codegen_main
+INTERPRETER_PATH := ~/xls/bazel-bin/xls/dslx/interpreter_main
+
+# codegen modifiable constants
+NUM_STREAMS := 2
+NUM_CLUSTERS := 1
+NUM_KERNELS := 1
+FLUSH_ITERS := 10
+ARBITER_STAGES := 7
+VB_SIZE := 4
+OB_SIZE := 4
+VB_BANK_SIZE := 2
+QUEUE_DEPTH := 5
+
+MEM_LATENCY := 2
+II := 3
+
+# inferred constants
+OB_DIVIDED_BY_NUM_STREAMS := $(shell expr $(OB_SIZE) / $(NUM_STREAMS))
+VECTOR_PAYLOAD_ONE_BITWIDTH := $(shell expr \( $(NUM_STREAMS) + 1 \) \* 32)
+
+# constants
+IDEAL_SIM_DSLX_PATH := --dslx_path="xls/ideal/matrix_loader:xls/ideal/pe:xls/ideal/result_draining:xls/ideal/shuffle:xls/ideal/vector_loader"
+ACTUAL_SIM_DSLX_PATH := --dslx_path="xls/actual/matrix_loader:xls/actual/pe:xls/actual/result_draining:xls/actual/shuffle:xls/actual/vector_loader"
+ACTUAL_CODEGEN_DSLX_PATH := --dslx_path="../xls/actual/matrix_loader:../xls/actual/pe:../xls/actual/result_draining:../xls/actual/shuffle:../xls/actual/vector_loader"
+
+##########################################
+
+list:
+	@printf "targets:\n\tcodegen: all_actual, all_opt\n\tsimulation: ideal, actual, opt\n"
+
+# simulation targets
+ideal:
+	$(INTERPRETER_PATH) xls/ideal/single_cluster_test.x $(IDEAL_SIM_DSLX_PATH) --alsologtostderr
+
+actual:
+	$(INTERPRETER_PATH) xls/actual/single_cluster_test.x $(ACTUAL_SIM_DSLX_PATH) --alsologtostderr
+
+opt:
+	$(INTERPRETER_PATH) xls/opt/single_cluster_test.x --dslx_path="xls/opt/matrix_loader:xls/opt/pe:xls/opt/result_draining:xls/opt/shuffle:xls/opt/vector_loader" --alsologtostderr
+
+# codegen targets
+clean:
+	cd hdl; mv single_cluster.sv /tmp/
+	cd hdl; rm *
+	cd hdl; mv /tmp/single_cluster.sv .
+
+all_actual: actual_sf actual_sf_core actual_arb actual_ml actual_vl actual_vau actual_vunpack actual_pe actual_cpacker actual_cmerger actual_kmerger
+# all_opt:
+
+# intermediate targets
+.PHONY: actual_sf
+actual_sf: hdl/__t__shuffler_0_next.sv
+hdl/__t__shuffler_0_next.sv: xls/actual/shuffle/shuffler.x
+	cat xls/actual/shuffle/shuffler.x > hdl/t.x
+	sed -i -e 's/<NUM_STREAMS: u32>//g' hdl/t.x
+	sed -i -e '/NUM_STREAMS:/!s/NUM_STREAMS/u32: $(NUM_STREAMS)/g' hdl/t.x
+	cd hdl; $(IR_PATH) $(ACTUAL_CODEGEN_DSLX_PATH) t.x --top=shuffler > t.ir
+	cd hdl; $(OPT_PATH) t.ir > t.opt.ir
+	cd hdl; $(CODEGEN_PATH) --pipeline_stages=3 --worst_case_throughput=$(II) --delay_model=unit --reset=rst t.opt.ir > __t__shuffler_0_next.sv
+	rm hdl/t.x
+	rm hdl/t.ir
+	rm hdl/t.opt.ir
+
+.PHONY: actual_sf_core
+actual_sf_core: hdl/__t__shuffler_core_0_next.sv
+hdl/__t__shuffler_core_0_next.sv: xls/actual/shuffle/shuffler_core.x
+	cat xls/actual/shuffle/shuffler_core.x > hdl/t.x
+	sed -i -e 's/<NUM_STREAMS: u32, FLUSH_ITERS: u32>//g' hdl/t.x
+	sed -i -e '/NUM_STREAMS:/!s/NUM_STREAMS/u32: $(NUM_STREAMS)/g' hdl/t.x
+	sed -i -e 's/FLUSH_ITERS/u32: $(FLUSH_ITERS)/g' hdl/t.x
+	cd hdl; $(IR_PATH) $(ACTUAL_CODEGEN_DSLX_PATH) t.x --top=shuffler_core > t.ir
+	cd hdl; $(OPT_PATH) t.ir > t.opt.ir
+	cd hdl; $(CODEGEN_PATH) --pipeline_stages=3 --worst_case_throughput=$(II) --delay_model=unit --reset=rst t.opt.ir > __t__shuffler_core_0_next.sv
+	rm hdl/t.x
+	rm hdl/t.ir
+	rm hdl/t.opt.ir
+
+.PHONY: actual_arb
+actual_arb: hdl/__t__arbiter_0_next.sv
+hdl/__t__arbiter_0_next.sv: xls/actual/shuffle/arbiter.x
+	cat xls/actual/shuffle/arbiter.x > hdl/t.x
+	sed -i -e 's/<NUM_STREAMS: u32>//g' hdl/t.x
+	sed -i -e 's/NUM_STREAMS/u32: $(NUM_STREAMS)/g' hdl/t.x
+	cd hdl; $(IR_PATH) $(ACTUAL_CODEGEN_DSLX_PATH) t.x --top=arbiter_wrapper > t.ir
+	cd hdl; $(OPT_PATH) t.ir > t.opt.ir
+	cd hdl; $(CODEGEN_PATH) --pipeline_stages=$(ARBITER_STAGES) --worst_case_throughput=$(II) --flop_inputs_kind=skid --delay_model=unit --reset=rst t.opt.ir > __t__arbiter_wrapper_0_next.sv
+	rm hdl/t.x
+	rm hdl/t.ir
+	rm hdl/t.opt.ir
+
+.PHONY: actual_ml
+actual_ml: hdl/__t__matrix_loader_0_next.sv
+hdl/__t__matrix_loader_0_next.sv: xls/actual/matrix_loader/matrix_loader.x
+	cat xls/actual/matrix_loader/matrix_loader.x > hdl/t.x
+	sed -i -e 's/<NUM_STREAMS: u32>//g' hdl/t.x
+	sed -i -e '/NUM_STREAMS:/!s/NUM_STREAMS/u32: $(NUM_STREAMS)/g' hdl/t.x
+	cd hdl; $(IR_PATH) $(ACTUAL_CODEGEN_DSLX_PATH) t.x --top=matrix_loader > t.ir
+	cd hdl; $(OPT_PATH) --opt_level=0 t.ir > t.opt.ir
+	cd hdl; $(CODEGEN_PATH) --pipeline_stages=3 --delay_model=unit --reset=rst --io_constraints=t__payload_type_one_index:send:t__payload_type_one:recv:2:2 --worst_case_throughput=$(II) t.opt.ir > __t__matrix_loader_0_next.sv
+	rm hdl/t.x
+	rm hdl/t.ir
+	rm hdl/t.opt.ir
+
+.PHONY: actual_vl
+actual_vl: hdl/__t__vector_loader_0_next.sv
+hdl/__t__vector_loader_0_next.sv: xls/actual/vector_loader/vector_loader.x
+	cat xls/actual/vector_loader/vector_loader.x > hdl/t.x
+	sed -i -e 's/<NUM_KERNELS: u32,NUM_STREAMS: u32,VB_SIZE: u32,PAYLOAD_ONE_BITWIDTH: u32 = { ((NUM_STREAMS + u32: 1) << 5)}>//g' hdl/t.x
+	sed -i -e '/NUM_STREAMS:/!s/NUM_STREAMS/u32: $(NUM_STREAMS)/g' hdl/t.x
+	sed -i -e '/NUM_KERNELS:/!s/NUM_KERNELS/u32: $(NUM_KERNELS)/g' hdl/t.x
+	sed -i -e '/VB_SIZE:/!s/VB_SIZE/u32: $(VB_SIZE)/g' hdl/t.x
+	sed -i -e '/PAYLOAD_ONE_BITWIDTH:/!s/PAYLOAD_ONE_BITWIDTH/u32: $(VECTOR_PAYLOAD_ONE_BITWIDTH)/g' hdl/t.x
+	cd hdl; $(IR_PATH) $(ACTUAL_CODEGEN_DSLX_PATH) t.x --top=vector_loader > t.ir
+	cd hdl; $(OPT_PATH) --opt_level=0 t.ir > t.opt.ir
+	cd hdl; $(CODEGEN_PATH) --pipeline_stages=3 --delay_model=unit --reset=rst --io_constraints=t__hbm_vector_addr:send:t__hbm_vector_payload:recv:2:2 --worst_case_throughput=$(II) t.opt.ir > __t__vector_loader_0_next.sv
+	rm hdl/t.x
+	rm hdl/t.ir
+	rm hdl/t.opt.ir
+
+.PHONY: actual_vau
+actual_vau: hdl/__t__vecbuf_access_unit_0_next.sv
+hdl/__t__vecbuf_access_unit_0_next.sv: xls/actual/vector_loader/vector_buffer_access_unit.x
+	cat xls/actual/vector_loader/vector_buffer_access_unit.x > hdl/t.x
+	sed -i -e 's/<BANK_SIZE: u32,NUM_STREAMS: u32>//g' hdl/t.x
+	sed -i -e '/NUM_STREAMS:/!s/NUM_STREAMS/u32: $(NUM_STREAMS)/g' hdl/t.x
+	sed -i -e '/BANK_SIZE:/!s/BANK_SIZE/u32: $(VB_BANK_SIZE)/g' hdl/t.x
+	cd hdl; $(IR_PATH) $(ACTUAL_CODEGEN_DSLX_PATH) t.x --top=vecbuf_access_unit > t.ir
+	cd hdl; $(OPT_PATH) --opt_level=0 t.ir > t.opt.ir
+	cd hdl; $(CODEGEN_PATH) --pipeline_stages=3 --delay_model=unit --reset=rst --io_constraints=t__vecbuf_bank_addr:send:t__vecbuf_dout:send:2:2,t__vecbuf_bank_addr:send:t__vecbuf_din:recv:2:2 --worst_case_throughput=$(II) t.opt.ir > __t__vecbuf_access_unit_0_next.sv
+	rm hdl/t.x
+	rm hdl/t.ir
+	rm hdl/t.opt.ir
+
+.PHONY: actual_vunpack
+actual_vunpack: hdl/__t__vector_unpacker_0_next.sv
+hdl/__t__vector_unpacker_0_next.sv: xls/actual/vector_loader/vector_unpacker.x
+	cat xls/actual/vector_loader/vector_unpacker.x > hdl/t.x
+	sed -i -e 's/<NUM_STREAMS: u32, PAYLOAD_ONE_BITWIDTH: u32 = { ((NUM_STREAMS + u32: 1) << 5)}>//g' hdl/t.x
+	sed -i -e '/NUM_STREAMS:/!s/NUM_STREAMS/u32: $(NUM_STREAMS)/g' hdl/t.x
+	sed -i -e '/BANK_SIZE:/!s/BANK_SIZE/u32: $(BANK_SIZE)/g' hdl/t.x
+	sed -i -e '/PAYLOAD_ONE_BITWIDTH:/!s/PAYLOAD_ONE_BITWIDTH/u32: $(VECTOR_PAYLOAD_ONE_BITWIDTH)/g' hdl/t.x
+	cd hdl; $(IR_PATH) $(ACTUAL_CODEGEN_DSLX_PATH) t.x --top=vector_unpacker > t.ir
+	cd hdl; $(OPT_PATH) --opt_level=0 t.ir > t.opt.ir
+	cd hdl; $(CODEGEN_PATH) --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II) t.opt.ir > __t__vector_unpacker_0_next.sv
+	rm hdl/t.x
+	rm hdl/t.ir
+	rm hdl/t.opt.ir
+
+.PHONY: actual_pe
+actual_pe: hdl/__t__processing_engine_0_next.sv
+hdl/__t__processing_engine_0_next.sv: xls/actual/pe/pe.x
+	cat xls/actual/pe/pe.x > hdl/t.x
+	sed -i -e 's/<NUM_STREAMS: u32, BANK_SIZE: u32, QUEUE_DEPTH: u32>//g' hdl/t.x
+	sed -i -e '/NUM_STREAMS:/!s/NUM_STREAMS/u32: $(NUM_STREAMS)/g' hdl/t.x
+	sed -i -e '/BANK_SIZE:/!s/BANK_SIZE/u32: $(BANK_SIZE)/g' hdl/t.x
+	sed -i -e '/QUEUE_DEPTH:/!s/QUEUE_DEPTH/u32: $(QUEUE_DEPTH)/g' hdl/t.x
+	cd hdl; $(IR_PATH) $(ACTUAL_CODEGEN_DSLX_PATH) t.x --top=processing_engine > t.ir
+	cd hdl; $(OPT_PATH) --opt_level=0 t.ir > t.opt.ir
+	cd hdl; $(CODEGEN_PATH) --pipeline_stages=3 --delay_model=unit --reset=rst --io_constraints=t__vecbuf_bank_addr:send:t__vecbuf_bank_dout:send:2:2,t__vecbuf_bank_addr:send:t__vecbuf_bank_din:recv:2:2 --worst_case_throughput=$(II) t.opt.ir > __t__processing_engine_0_next.sv
+	rm hdl/t.x
+	rm hdl/t.ir
+	rm hdl/t.opt.ir
+
+.PHONY: actual_cpacker
+actual_cpacker: hdl/__t__cluster_packer_0_next.sv
+hdl/__t__cluster_packer_0_next.sv: xls/actual/result_draining/cluster_packer.x
+	cat xls/actual/result_draining/cluster_packer.x > hdl/t.x
+	sed -i -e 's/<NUM_STREAMS: u32,PAYLOAD_ONE_BITWIDTH: u32 = { ((NUM_STREAMS + u32: 1) << 5)}>//g' hdl/t.x
+	sed -i -e '/NUM_STREAMS:/!s/NUM_STREAMS/u32: $(NUM_STREAMS)/g' hdl/t.x
+	sed -i -e '/PAYLOAD_ONE_BITWIDTH:/!s/PAYLOAD_ONE_BITWIDTH/u32: $(VECTOR_PAYLOAD_ONE_BITWIDTH)/g' hdl/t.x
+	cd hdl; $(IR_PATH) $(ACTUAL_CODEGEN_DSLX_PATH) t.x --top=cluster_packer > t.ir
+	cd hdl; $(OPT_PATH) --opt_level=0 t.ir > t.opt.ir
+	cd hdl; $(CODEGEN_PATH) --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II) t.opt.ir > __t__cluster_packer_0_next.sv
+	rm hdl/t.x
+	rm hdl/t.ir
+	rm hdl/t.opt.ir
+
+.PHONY: actual_cmerger
+actual_cmerger: hdl/__t__clusters_results_merger_0_next.sv
+hdl/__t__clusters_results_merger_0_next.sv: xls/actual/result_draining/clusters_results_merger.x
+	cat xls/actual/result_draining/clusters_results_merger.x > hdl/t.x
+	sed -i -e 's/<NUM_CLUSTERS: u32, NUM_STREAMS: u32, PAYLOAD_ONE_BITWIDTH: u32 = { ((NUM_STREAMS + u32: 1) << 5)}>//g' hdl/t.x
+	sed -i -e '/NUM_CLUSTERS:/!s/NUM_CLUSTERS/u32: $(NUM_CLUSTERS)/g' hdl/t.x
+	sed -i -e '/NUM_STREAMS:/!s/NUM_STREAMS/u32: $(NUM_STREAMS)/g' hdl/t.x
+	sed -i -e '/PAYLOAD_ONE_BITWIDTH:/!s/PAYLOAD_ONE_BITWIDTH/u32: $(VECTOR_PAYLOAD_ONE_BITWIDTH)/g' hdl/t.x
+	cd hdl; $(IR_PATH) $(ACTUAL_CODEGEN_DSLX_PATH) t.x --top=clusters_results_merger > t.ir
+	cd hdl; $(OPT_PATH) --opt_level=0 t.ir > t.opt.ir
+	cd hdl; $(CODEGEN_PATH) --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II) t.opt.ir > __t__clusters_results_merger_0_next.sv
+	rm hdl/t.x
+	rm hdl/t.ir
+	rm hdl/t.opt.ir
+
+.PHONY: actual_kmerger
+actual_kmerger: hdl/__t__kernels_results_merger_0_next.sv
+hdl/__t__kernels_results_merger_0_next.sv: xls/actual/result_draining/kernels_results_merger.x
+	cat xls/actual/result_draining/kernels_results_merger.x > hdl/t.x
+	sed -i -e 's/<NUM_KERNELS: u32, OB_DIVIDED_BY_PACK_SIZE: u32, NUM_STREAMS: u32, PAYLOAD_ONE_BITWIDTH: u32 = { ((NUM_STREAMS + u32: 1) << 5)}>//g' hdl/t.x
+	sed -i -e '/NUM_KERNELS:/!s/NUM_KERNELS/u32: $(NUM_KERNELS)/g' hdl/t.x
+	sed -i -e '/NUM_STREAMS:/!s/NUM_STREAMS/u32: $(NUM_STREAMS)/g' hdl/t.x
+	sed -i -e '/OB_DIVIDED_BY_PACK_SIZE:/!s/OB_DIVIDED_BY_PACK_SIZE/u32: $(OB_DIVIDED_BY_NUM_STREAMS)/g' hdl/t.x
+	sed -i -e '/PAYLOAD_ONE_BITWIDTH:/!s/PAYLOAD_ONE_BITWIDTH/u32: $(VECTOR_PAYLOAD_ONE_BITWIDTH)/g' hdl/t.x
+	cd hdl; $(IR_PATH) $(ACTUAL_CODEGEN_DSLX_PATH) t.x --top=kernels_results_merger > t.ir
+	cd hdl; $(OPT_PATH) --opt_level=0 t.ir > t.opt.ir
+	cd hdl; $(CODEGEN_PATH) --io_constraints=t__hbm_vector_addr:send:t__hbm_vector_payload:send:2:2 --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II) t.opt.ir > __t__kernels_results_merger_0_next.sv
+	rm hdl/t.x
+	rm hdl/t.ir
+	rm hdl/t.opt.ir

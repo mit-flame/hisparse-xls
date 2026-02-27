@@ -1,4 +1,4 @@
-My first, "ideal" implementation of Hisparse in XLS. The code passes all of the integration tests, however, is not able to generate correct verilog for the following reasons:
+My first, "ideal" implementation of Hisparse in XLS. Run the command `make ideal` in the repo root to simulate. However, this is not able to generate correct verilog for the following reasons:
 
 # Problems
 - Tokens cannot flow through match/if arms: [discussion](https://github.com/google/xls/discussions/3736#discussioncomment-15642695)
