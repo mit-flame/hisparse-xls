@@ -1,7 +1,7 @@
 # Requirements
-- cocotb
+- cocotb (made with 1.9.2)
 - cocotb_bus
-- verilator
+- verilator (made with 5.020)
 - xls
 
 # Installation
