@@ -1,4 +1,4 @@
-The first XLS implementation of hisparse that generated simulation correct verilog. The following changes were made:
+The first XLS implementation of hisparse that generated simulation correct verilog. The following changes were made to address the earlier problems (in order):
 
 # Modifications
 - solved by separating send/recv from state logic, in turn breaking states down until there was exactly only sends or only receives (greatly increased the number of states)
