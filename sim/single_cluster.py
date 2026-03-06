@@ -53,12 +53,12 @@ async def test_single_cluster(dut):
                     "kmerger_t__hbm_vector_addr",
                     "kmerger_t__hbm_vector_payload"
                     ])
-    mlkwargs = {"hbm_chan": 0, "matrix_fp": "/home/ayana/hisparse-xls/data/spmv1.json", "latency": 2, "num_streams": 2}
-    vlkwargs = {"mem": [0, 1, 2, 3, 4, 5, 6, 7], "latency": 2, "num_streams": 2}
-    vb0kwargs = {"vecbuf_name": "vecbuf0", "latency": 2, "banksize": 4}
-    vb1kwargs = {"vecbuf_name": "vecbuf1", "latency": 2, "banksize": 4}
-    pe0kwargs = {"pe_name": "pe0", "latency": 2, "banksize": 4}
-    pe1kwargs = {"pe_name": "pe1", "latency": 2, "banksize": 4}
+    mlkwargs = {"hbm_chan": 0, "matrix_fp": "/home/ayana/hisparse-xls/data/spmv1.json", "latency": 1, "num_streams": 2}
+    vlkwargs = {"mem": [0, 1, 2, 3, 4, 5, 6, 7], "latency": 1, "num_streams": 2}
+    vb0kwargs = {"vecbuf_name": "vecbuf0", "latency": 1, "banksize": 4}
+    vb1kwargs = {"vecbuf_name": "vecbuf1", "latency": 1, "banksize": 4}
+    pe0kwargs = {"pe_name": "pe0", "latency": 1, "banksize": 4}
+    pe1kwargs = {"pe_name": "pe1", "latency": 1, "banksize": 4}
     dut.kmerger_t__hbm_vector_addr_rdy.value = 1
     dut.kmerger_t__hbm_vector_payload_rdy.value = 1
     await tester.start(
@@ -72,7 +72,7 @@ async def test_single_cluster(dut):
             "t__num_col_partitions": 2,
             "t__tot_num_partitions": 4,
             "t__num_matrix_cols": 8,
-            "kmerger_t__current_row_partition":0,
+            "kmerger_t__current_row_partition":row_part,
             "kmerger_t__num_hbm_channels_each_kernel":1
             }])
         tester.input_driver.extend([{"vecbuf0_t__num_col_partitions":2,
@@ -85,7 +85,8 @@ async def test_single_cluster(dut):
         for _ in range(2):
             await RisingEdge(dut.kmerger_t__hbm_vector_addr_vld)
             addr = int(dut.kmerger_t__hbm_vector_addr.value)
-            await RisingEdge(dut.kmerger_t__hbm_vector_payload_vld)
+            if dut.kmerger_t__hbm_vector_payload_vld.value != 1:
+                await RisingEdge(dut.kmerger_t__hbm_vector_payload_vld)
             payload = str(dut.kmerger_t__hbm_vector_payload.value)
             payload = [int(payload[:len(payload)//2], 2),int(payload[len(payload)//2:], 2)] 
             print(f"Output: packed_payload[{addr}] = {payload}")

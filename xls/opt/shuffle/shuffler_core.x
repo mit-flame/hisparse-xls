@@ -106,9 +106,9 @@ pub proc shuffler_core <NUM_STREAMS: u32, FLUSH_ITERS: u32> // this will be depe
                 (mpo_pld, zero!<uN[96][NUM_STREAMS]>(), zero!<u1[NUM_STREAMS]>(), u32: 0)
             },
             u32: 11 => {
-                // note we are sending zeros to the arbiter
+                // do NOT send 0s to arbiter if there is a resend payload
                 let mpo_pld = crossbar::crossbar<NUM_STREAMS>(state.5, state.9, state.8, state.7);
-                (mpo_pld, zero!<uN[96][NUM_STREAMS]>(), zero!<u1[NUM_STREAMS]>(), state.3)
+                (mpo_pld, state.5, state.6, state.3)
             },
             u32: 20 => {
                 let mpo_pld = 
