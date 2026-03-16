@@ -1,27 +1,38 @@
 # driver coroutines for hisparse modules
 # readys are combinational 
 import cocotb
-from cocotb.triggers import RisingEdge, ReadWrite
+from cocotb.triggers import RisingEdge, ReadWrite, ReadOnly
 from cocotb.handle import SimHandleBase, BinaryValue
 from typing import Tuple
 from lib import hbm_channel
 
-async def driver_core_read(dut: SimHandleBase, addr_signal_name: str, ) -> bool:
+async def driver_core_read_combinational_ready(dut: SimHandleBase, addr_signal_name: str, pld_signal_name: str):
+    while True:
+        await RisingEdge(dut.clk)
+        for _ in range(10): # arbitrary evaluation cycle waits to ensure value settle
+            await ReadWrite()
+        if getattr(dut, f"{pld_signal_name}_vld").value != 1 or getattr(dut, f"{pld_signal_name}_rdy").value == 1:
+            getattr(dut, f"{addr_signal_name}_rdy").value = 1
+        else:
+            getattr(dut, f"{addr_signal_name}_rdy").value = 0
+
+async def driver_core_read(dut: SimHandleBase, addr_signal_name: str) -> bool:
     await RisingEdge(dut.clk)
-    await ReadWrite()
-    if getattr(dut, f"{addr_signal_name}_vld").value == 1:
+    await ReadOnly()
+    if getattr(dut, f"{addr_signal_name}_vld").value == 1 and getattr(dut, f"{addr_signal_name}_rdy").value == 1: # is a transaction allowable?
         return True
     else:
         return False
-    
+
 async def driver_core_read_worker(dut: SimHandleBase, latency: int, addr_signal_name: str) -> BinaryValue:
-    getattr(dut, f"{addr_signal_name}_rdy").value = 1
     addr = getattr(dut, f"{addr_signal_name}").value
-    await RisingEdge(dut.clk)
-    await ReadWrite()
-    getattr(dut, f"{addr_signal_name}_rdy").value = 0
     for _ in range(latency - 1):
+        # a ready deassertion mid latency == pausing of this loops progress
+        while getattr(dut, f"{addr_signal_name}_rdy").value != 1:
+            await RisingEdge(getattr(dut, f"{addr_signal_name}_rdy"))
+            await ReadOnly()
         await RisingEdge(dut.clk)
+        await ReadOnly()
     return addr
 
 async def driver_core_read_write(dut: SimHandleBase, addr_signal_name: str) -> bool:
@@ -59,12 +70,14 @@ async def driver_core_read_write_worker(dut: SimHandleBase, latency: int, addr_s
         await RisingEdge(dut.clk)
     return write_req, addr, dout
     
-async def matrix_loader_driver(dut: SimHandleBase, matrix_fp: str, hbm_chan: int, latency: int = 2, num_streams: int = 1):
+async def matrix_loader_regular_driver(dut: SimHandleBase, matrix_fp: str, hbm_chan: int, addr_sig: str, pld_sig: str, latency: int = 2, num_streams: int = 1):
     total_hbm = hbm_channel.raw_to_cpsr_hbmchannel(matrix_fp, "+1", "#", 4, 4, 2, 1, True)
     mem = hbm_channel.HBM_CHAN(total_hbm=total_hbm, chan=hbm_chan, num_streams=num_streams)
     ALL_ONES = 2**32 - 1
     async def matrix_loader_worker():
-        addr = await driver_core_read_worker(dut=dut, latency=latency, addr_signal_name="t__payload_type_one_index")
+        addr = await driver_core_read_worker(dut=dut, latency=latency, addr_signal_name=addr_sig)
+        await RisingEdge(dut.clk)
+        await ReadWrite()
         addr = int(addr)
         packed_pld = mem[addr]
         packed_pld_str = ""
@@ -76,33 +89,83 @@ async def matrix_loader_driver(dut: SimHandleBase, matrix_fp: str, hbm_chan: int
                     packed_pld_str += f"{0:0{8}x}" + f"{0:0{8}x}"
             else:
                 packed_pld_str += f"{stream[1]:0{8}x}" + f"{stream[0]:0{8}x}"
-        # print(f"running ml {addr} {packed_pld_str}")
-        dut.t__payload_type_one.value = int(packed_pld_str, 16)
-        dut.t__payload_type_one_vld.value = 1
+        # print(f"running mlsend {addr} {packed_pld_str}")
+        getattr(dut, f"{pld_sig}").value = int(packed_pld_str, 16)
+        getattr(dut, f"{pld_sig}_vld").value = 1
+        await ReadOnly()
+        while getattr(dut, f"{pld_sig}_rdy").value != 1:
+            await RisingEdge(getattr(dut, pld_sig))
+            await ReadOnly()
         await RisingEdge(dut.clk)
-        dut.t__payload_type_one.value = 0
-        dut.t__payload_type_one_vld.value = 0
-
+        await ReadWrite()
+        getattr(dut, f"{pld_sig}").value = 0
+        getattr(dut, f"{pld_sig}_vld").value = 0
+    cocotb.start_soon(driver_core_read_combinational_ready(dut=dut, addr_signal_name=addr_sig, pld_signal_name=pld_sig))
     while True:
-        ok = await driver_core_read(dut=dut, addr_signal_name="t__payload_type_one_index")
+        ok = await driver_core_read(dut=dut, addr_signal_name=addr_sig)
+        if ok:
+            cocotb.start_soon(matrix_loader_worker())
+
+async def matrix_loader_split_driver(dut: SimHandleBase, matrix_fp: str, hbm_chan: int, addr_sig: str, pld_sig: str, latency: int = 2, num_streams: int = 1):
+    total_hbm = hbm_channel.raw_to_cpsr_hbmchannel(matrix_fp, "+1", "#", 4, 4, 2, 1, True)
+    mem = hbm_channel.HBM_CHAN(total_hbm=total_hbm, chan=hbm_chan, num_streams=num_streams)
+    ALL_ONES = 2**32 - 1
+    async def matrix_loader_worker():
+        addr_commands = await driver_core_read_worker(dut=dut, latency=latency, addr_signal_name=addr_sig)
+        addr_commands = str(addr_commands)
+        addr, commands = int(addr_commands[:len(addr_commands)//2], 2), int(addr_commands[len(addr_commands)//2:], 2)
+        await RisingEdge(dut.clk)
+        await ReadWrite()
+        packed_pld = mem[addr]
+        packed_pld_str = ""
+        for stream in reversed(packed_pld):
+            if type(stream[0]) == str:
+                if "+" in stream[0]: # next row marker
+                    packed_pld_str += f"{ALL_ONES:0{8}x}" + f"{int(stream[0][1:]):0{8}x}"
+                else: # padding
+                    packed_pld_str += f"{0:0{8}x}" + f"{0:0{8}x}"
+            else:
+                packed_pld_str += f"{stream[1]:0{8}x}" + f"{stream[0]:0{8}x}"
+        packed_pld_str += f"{commands:0{8}x}"
+        # print(f"running mlrecv {addr_commands} {addr} {packed_pld_str}")
+        getattr(dut, f"{pld_sig}").value = int(packed_pld_str, 16)
+        getattr(dut, f"{pld_sig}_vld").value = 1
+        await ReadOnly()
+        while getattr(dut, f"{pld_sig}_rdy").value != 1:
+            await RisingEdge(getattr(dut, pld_sig))
+            await ReadOnly()
+        await RisingEdge(dut.clk)
+        await ReadWrite()
+        getattr(dut, f"{pld_sig}").value = 0
+        getattr(dut, f"{pld_sig}_vld").value = 0
+    cocotb.start_soon(driver_core_read_combinational_ready(dut=dut, addr_signal_name=addr_sig, pld_signal_name=pld_sig))
+    while True:
+        ok = await driver_core_read(dut=dut, addr_signal_name=addr_sig)
         if ok:
             cocotb.start_soon(matrix_loader_worker())
             
-async def vector_loader_driver(dut, mem: list[int], latency: int = 2, num_streams: int = 1):
+async def vector_loader_driver(dut, mem: list[int], addr_sig: str, pld_sig: str, latency: int = 2, num_streams: int = 1):
     async def vector_loader_worker():
-        addr = await driver_core_read_worker(dut=dut, latency=latency, addr_signal_name="t__hbm_vector_addr")
+        addr = await driver_core_read_worker(dut=dut, latency=latency, addr_signal_name=addr_sig)
+        await RisingEdge(dut.clk)
+        await ReadWrite()
         addr = int(addr)
         packed_pld_str = ""
         for stream in range(num_streams):
             packed_pld_str += f"{mem[addr*num_streams + stream]:0{8}x}"
-        # print(f"running vl {addr} {packed_pld_str}")
-        dut.t__hbm_vector_payload.value = int(packed_pld_str, 16)
-        dut.t__hbm_vector_payload_vld.value = 1
+        getattr(dut, f"{pld_sig}").value = int(packed_pld_str, 16)
+        getattr(dut, f"{pld_sig}_vld").value = 1
+        await ReadOnly()
+        while getattr(dut, f"{pld_sig}_rdy").value != 1:
+            await RisingEdge(getattr(dut, pld_sig))
+            await ReadOnly()
         await RisingEdge(dut.clk)
-        dut.t__hbm_vector_payload.value = 0
-        dut.t__hbm_vector_payload_vld.value = 0
+        await ReadWrite()
+        getattr(dut, f"{pld_sig}").value = 0
+        getattr(dut, f"{pld_sig}_vld").value = 0
+    cocotb.start_soon(driver_core_read_combinational_ready(dut=dut, addr_signal_name=addr_sig, pld_signal_name=pld_sig))
     while True:
-        ok = await driver_core_read(dut=dut, addr_signal_name="t__hbm_vector_addr")
+        ok = await driver_core_read(dut=dut, addr_signal_name=addr_sig)
         if ok:
             cocotb.start_soon(vector_loader_worker())            
 

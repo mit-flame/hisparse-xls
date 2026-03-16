@@ -8,28 +8,7 @@
 // padding can be achieved by just having the data be 0 and index
 // be MAX_VAL. When payload ones are padding, payload twos will be all
 // zeroes
-pub fn payload_converter<
-    NUM_STREAMS: u32
->(
-    payload_type_one_i:     uN[64],
-    current_row_index:      u32,
-    command:                u2
-) -> uN[96]
-{
-    let index = payload_type_one_i[32+:u32];
-    let data = payload_type_one_i[0+:u32];
-    let row = 
-    if (index == all_ones!<u32>()){
-        current_row_index + data * NUM_STREAMS
-    }
-    else {
-        current_row_index
-    };
-    (command ++ (index as u30) ++ row ++ data)
-}
 
-// if i put getters here this can serve as the centralized
-// authority on the payload format, aka make it an opaque type
 pub fn unpack_payload_one<
     NUM_STREAMS: u32
 >(
@@ -49,4 +28,14 @@ pub fn max_array<
         let new_max = if (array[idx] > max) { array[idx] } else { max };
         (new_max)
     }((u32: 0))
+}
+
+pub struct StreamAddr{
+    addr: u32,
+    commands: u32 // one hot command encoding
+}
+
+pub struct StreamPayload<NUM_STREAMS: u32>{
+    payload_type_one: uN[64][NUM_STREAMS],
+    commands: u32
 }

@@ -113,7 +113,7 @@ pub proc shuffler_core <NUM_STREAMS: u32, FLUSH_ITERS: u32> // this will be depe
             u32: 20 => {
                 let mpo_pld = 
                 for (idx, pld) : (u32, uN[96][NUM_STREAMS]) in u32:0..NUM_STREAMS{
-                    let sp = matrix_helper::payload_converter<NUM_STREAMS>(zero!<uN[64]>(), u32: 0, u2: 2);
+                    let sp = u2: 2 ++ uN[94]: 0;
                     let n_pld = update(pld, idx, sp);
                     (n_pld)
                 }(zero!<uN[96][NUM_STREAMS]>());

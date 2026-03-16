@@ -26,7 +26,7 @@ VECTOR_PAYLOAD_ONE_BITWIDTH := $(shell expr \( $(NUM_STREAMS) + 1 \) \* 32)
 IDEAL_SIM_DSLX_PATH := --dslx_path="xls/ideal/matrix_loader:xls/ideal/pe:xls/ideal/result_draining:xls/ideal/shuffle:xls/ideal/vector_loader"
 ACTUAL_SIM_DSLX_PATH := --dslx_path="xls/actual/matrix_loader:xls/actual/pe:xls/actual/result_draining:xls/actual/shuffle:xls/actual/vector_loader"
 ACTUAL_CODEGEN_DSLX_PATH := --dslx_path="../xls/actual/matrix_loader:../xls/actual/pe:../xls/actual/result_draining:../xls/actual/shuffle:../xls/actual/vector_loader"
-OPT_CODEGEN_DSLX_PATH := --dslx_path="../xls/actual/matrix_loader:../xls/actual/pe:../xls/actual/result_draining:../xls/actual/shuffle:../xls/actual/vector_loader"
+OPT_CODEGEN_DSLX_PATH := --dslx_path="../xls/opt/matrix_loader:../xls/opt/pe:../xls/opt/result_draining:../xls/opt/shuffle:../xls/opt/vector_loader"
 MODE ?= # supports actual or opt
 ##########################################
 
@@ -45,12 +45,19 @@ opt:
 
 # codegen targets
 clean:
-	cd hdl; mv single_cluster.sv /tmp/
+	cd hdl; mv single_cluster_opt.sv /tmp/
+	cd hdl; mv single_cluster_actual.sv /tmp/
+	cd hdl; mv matrix_loader_opt_top.sv /tmp/
 	cd hdl; rm *
-	cd hdl; mv /tmp/single_cluster.sv .
+	cd hdl; mv /tmp/single_cluster_opt.sv .
+	cd hdl; mv /tmp/single_cluster_actual.sv .
+	cd hdl; mv /tmp/matrix_loader_opt_top.sv .
 
+ifeq ($(MODE),actual)
 all: sf sf_core arb ml vl vau vunpack pe cpacker cmerger kmerger
-
+else ifeq ($(MODE),opt)
+all: sf sf_core arb ml_recv ml_send vl vau vunpack pe cpacker cmerger kmerger
+endif
 # intermediate targets
 MODE_REQUIRED_TARGETS := all sf sf_core arb ml vl vau vunpack pe cpacker cmerger kmerger
 ifneq ($(filter $(MODE_REQUIRED_TARGETS),$(MAKECMDGOALS)),)
@@ -85,7 +92,8 @@ OPT_LEVEL := --opt_level=3
 SF_CODEGEN_FLAGS := --pipeline_stages=3 --worst_case_throughput=$(II) --delay_model=unit --reset=rst --flop_inputs_kind=skid
 SF_CORE_CODEGEN_FLAGS := --pipeline_stages=3 --worst_case_throughput=$(II) --delay_model=unit --reset=rst --flop_inputs_kind=skid
 ARBITER_CODEGEN_FLAGS := --pipeline_stages=$(ARBITER_STAGES) --worst_case_throughput=$(II) --flop_inputs_kind=skid --delay_model=unit --reset=rst
-ML_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
+ML_RECV_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
+ML_SEND_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
 VL_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
 VECBUF_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
 VUNPACK_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
@@ -131,6 +139,32 @@ hdl/__t__arbiter_wrapper_0_next.sv: xls/$(MODE)/shuffle/arbiter.x
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=arbiter_wrapper > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(ARBITER_CODEGEN_FLAGS) t.opt.ir > __t__arbiter_wrapper_0_next.sv
+	rm hdl/t.x
+	rm hdl/t.ir
+	rm hdl/t.opt.ir
+
+.PHONY: ml_recv
+ml_recv: hdl/__t__matrix_loader_recv_0_next.sv
+hdl/__t__matrix_loader_recv_0_next.sv: xls/$(MODE)/matrix_loader/matrix_loader_recv.x
+	cat xls/$(MODE)/matrix_loader/matrix_loader_recv.x > hdl/t.x
+	sed -i -e 's/<NUM_STREAMS: u32>//g' hdl/t.x
+	sed -i -e '/NUM_STREAMS:/!s/NUM_STREAMS/u32: $(NUM_STREAMS)/g' hdl/t.x
+	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=matrix_loader_recv > t.ir
+	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
+	cd hdl; $(CODEGEN_PATH) $(ML_RECV_CODEGEN_FLAGS) t.opt.ir > __t__matrix_loader_recv_0_next.sv
+	rm hdl/t.x
+	rm hdl/t.ir
+	rm hdl/t.opt.ir
+
+.PHONY: ml_send
+ml_send: hdl/__t__matrix_loader_send_0_next.sv
+hdl/__t__matrix_loader_send_0_next.sv: xls/$(MODE)/matrix_loader/matrix_loader_send.x
+	cat xls/$(MODE)/matrix_loader/matrix_loader_send.x > hdl/t.x
+	sed -i -e 's/<NUM_STREAMS: u32>//g' hdl/t.x
+	sed -i -e '/NUM_STREAMS:/!s/NUM_STREAMS/u32: $(NUM_STREAMS)/g' hdl/t.x
+	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=matrix_loader_send > t.ir
+	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
+	cd hdl; $(CODEGEN_PATH) $(ML_SEND_CODEGEN_FLAGS) t.opt.ir > __t__matrix_loader_send_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir

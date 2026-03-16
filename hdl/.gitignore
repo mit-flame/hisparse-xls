@@ -1,3 +1,4 @@
 *
 !.gitignore
-!single_cluster.sv
+!single_cluster*.sv
+!matrix_loader_opt_top.sv

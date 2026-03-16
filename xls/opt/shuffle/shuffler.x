@@ -73,7 +73,7 @@ pub proc shuffler<NUM_STREAMS: u32>
             u32: 1 => {
                 let mpo_pld =
                 for (idx, pld) : (u32, uN[96][NUM_STREAMS]) in u32:0..NUM_STREAMS {
-                    let n_pld = update(pld, idx, matrix_helper::payload_converter<NUM_STREAMS>(zero!<uN[64]>(), u32: 0, u2: 1));
+                    let n_pld = update(pld, idx, u2: 1 ++ uN[94]: 0);
                     (n_pld)
                 }(zero!<uN[96][NUM_STREAMS]>());
                 (mpo_pld, zero!<uN[96][NUM_STREAMS]>())
@@ -83,7 +83,7 @@ pub proc shuffler<NUM_STREAMS: u32>
             u32: 7 => {
                 let mpo_pld =
                 for (idx, pld) : (u32, uN[96][NUM_STREAMS]) in u32:0..NUM_STREAMS {
-                    let n_pld = update(pld, idx, matrix_helper::payload_converter<NUM_STREAMS>(zero!<uN[64]>(), u32: 0, u2: 3));
+                    let n_pld = update(pld, idx, u2: 3 ++ uN[94]: 0);
                     (n_pld)
                 }(zero!<uN[96][NUM_STREAMS]>());
                 (mpo_pld, zero!<uN[96][NUM_STREAMS]>())

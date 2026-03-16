@@ -1,4 +1,4 @@
-module single_cluster(
+module single_cluster_actual(
   input wire clk,
   input wire rst,
 
@@ -228,7 +228,6 @@ module single_cluster(
   logic sf_one_t__multistream_payload_o__1_vld;
   logic sf_one_t__shuffler_multistream__core_payload_o__0_rdy;
   logic sf_one_t__shuffler_multistream__core_payload_o__1_rdy;
-  logic sf_one_t__multistream_payload_o__1_rdy;
 
   __t__shuffler_0_next sf_one(
     .clk(clk),

@@ -1,4 +1,6 @@
-import matrix_loader;
+import matrix_helper;
+import matrix_loader_recv;
+import matrix_loader_send;
 import vector_loader;
 import vector_unpacker;
 import vector_buffer_access_unit;
@@ -40,12 +42,16 @@ proc Tester {
     vecbuf_dout:                    chan<u32>[u32: 2]        in;
     vecbuf_din:                     chan<u32>[u32: 2]       out;
     
-    // running the ML
-    payload_type_one:           chan<uN[64][u32: 2]> out;
-    payload_type_one_index:     chan<u32> in;
+    // running the ML-send
+    metadata_payload:           chan<uN[64][u32: 2]> out;
+    metadata_addr:              chan<u32> in;
+    streaming_addr:             chan<matrix_helper::StreamAddr> in;
     cur_row_partition:          chan<u32> out;
-    mat_num_col_partitions:         chan<u32> out;
+    mat_num_col_partitions:     chan<u32> out;
     tot_num_partitions:         chan<u32> out;
+
+    // running the ML-recv
+    streaming_payload_one:                     chan<matrix_helper::StreamPayload<u32: 2>> out;
 
     // running both PEs
     cluster_vecbuf_bank_addr:               chan<u32>[u32: 2] in;
@@ -67,14 +73,17 @@ proc Tester {
         terminator: chan<bool> out,
     ){
         // ML to first shuffle unit output
-        let (ptype1_out, ptype1_in) = chan<uN[64][2]>("ml_payload_type_one_channel");
-        let (ptype1_index_out, ptype1_index_in) = chan<u32>("ml_payload_type_one_index_channel");
+        let (metadata_out, metadata_in) = chan<uN[64][2]>("ml_metadata_pld");
+        let (metadata_addr_out, metadata_addr_in) = chan<u32>("ml_metadata_addr");
+        let (streaming_addr_out, streaming_addr_in) = chan<matrix_helper::StreamAddr>("ml_stream_addr");
         let (crp_out, crp_in) = chan<u32>("ml_current_row_partition_channel");
         let (mncp_out, mncp_in) = chan<u32>("ml_num_col_partition_channel");
         let (tnp_out, tnp_in) = chan<u32>("ml_tot_num_partitions_channel");
+        spawn matrix_loader_send::matrix_loader_send<u32: 2>(metadata_addr_out, metadata_in, streaming_addr_out, crp_in, mncp_in, tnp_in);
         let (ptype2_out, ptype2_in) = chan<uN[96]>[u32: 2]("ml_payload_type_two_channel");
+        let (stream_payload_out, stream_payload_in) = chan<matrix_helper::StreamPayload<u32: 2>>("ml_stream_payload");
+        spawn matrix_loader_recv::matrix_loader_recv<u32: 2>(stream_payload_in, ptype2_out);
         let (sf_ptype2_out, sf_ptype2_in) = chan<uN[96]>[u32: 2]("sf_payload_type_two_channel");
-        spawn matrix_loader::matrix_loader<u32: 2>(ptype1_in, ptype1_index_out, crp_in, mncp_in, tnp_in, ptype2_out);
         let (spttio, spttii) = chan<uN[96]>[u32: 2]("sptti");
         let (spttoo, spttoi) = chan<uN[96]>[u32: 2]("sptto");
         spawn shuffler::shuffler<u32: 2>(
@@ -159,8 +168,10 @@ proc Tester {
             hvpo, hvai, nmco,
             // for the VAU
             vncpo, mvbai, mvdoi, mvdio,
-            // for the ML
-            ptype1_out, ptype1_index_in, crp_out, mncp_out, tnp_out,
+            // for the ML-send
+            metadata_out, metadata_addr_in, streaming_addr_in, crp_out, mncp_out, tnp_out,
+            // for the ML-recv
+            stream_payload_out,
             // for both PEs
             cvbai, cvbdio, cvbdoi, cnruo, csio,
             // for the kernel results merger
@@ -262,29 +273,32 @@ proc Tester {
         trace_fmt!("VAU BANKS: {:0x} {:0x}", vau0_bank, vau1_bank);
         
         // per matrix partition metadata handshake
-        let (tok, requested_index) = recv(tok, payload_type_one_index);
+        let (tok, requested_index) = recv(tok, metadata_addr);
         trace_fmt!("metadata requested index {:0x}", requested_index);
         let start_of_partition = [u32: 0 ++ u32: 0, u32: 0 ++ u32: 0];
-        let tok = send(tok, payload_type_one, start_of_partition);
-        let (tok, requested_index) = recv(tok, payload_type_one_index);
+        let tok = send(tok, metadata_payload, start_of_partition);
+        let (tok, requested_index) = recv(tok, metadata_addr);
         trace_fmt!("metadata requested index {:0x}", requested_index);
         let stream_length_payload = [u32: 3 ++ u32: 0, u32: 1 ++ u32: 0];
-        let tok = send(tok, payload_type_one, stream_length_payload);
+        let tok = send(tok, metadata_payload, stream_length_payload);
         // start of partition, buffer all the matrix sends first
-        let (tok, req_i) = recv(tok, payload_type_one_index);
+        let (tok, req_i) = recv(tok, streaming_addr);
+        trace_fmt!("SOD StreamAddr: {:0x}", req_i);
+        let tok = send(tok, streaming_payload_one, matrix_helper::StreamPayload<u32: 2>{payload_type_one: zero!<uN[64][2]>(), commands: req_i.commands});
+        let (tok, req_i) = recv(tok, streaming_addr);
         trace_fmt!("p1 addr: {:0x}", req_i);
-        let pld = [u32: 0 ++ u32: 1, all_ones!<u32>() ++ u32: 1];
-        let tok = send(tok, payload_type_one, pld);
+        let pld = matrix_helper::StreamPayload<u32: 2>{payload_type_one: [u32: 0 ++ u32: 1, all_ones!<u32>() ++ u32: 1], commands: req_i.commands};
+        let tok = send(tok, streaming_payload_one, pld);
 
-        let (tok, req_i) = recv(tok, payload_type_one_index);
+        let (tok, req_i) = recv(tok, streaming_addr);
         trace_fmt!("p1 addr: {:0x}", req_i);
-        let pld = [u32: 2 ++ u32: 2, zero!<u64>()];
-        let tok = send(tok, payload_type_one, pld);
+        let pld = matrix_helper::StreamPayload<u32: 2>{payload_type_one: [u32: 2 ++ u32: 2, zero!<u64>()], commands: req_i.commands};
+        let tok = send(tok, streaming_payload_one, pld);
 
-        let (tok, req_i) = recv(tok, payload_type_one_index);
+        let (tok, req_i) = recv(tok, streaming_addr);
         trace_fmt!("p1 addr: {:0x}", req_i);
-        let pld = [all_ones!<u32>() ++ u32: 1, zero!<u64>()];
-        let tok = send(tok, payload_type_one, pld);
+        let pld = matrix_helper::StreamPayload<u32: 2>{payload_type_one: [all_ones!<u32>() ++ u32: 1, zero!<u64>()], commands: req_i.commands};
+        let tok = send(tok, streaming_payload_one, pld);
 
         // then deal with the VAU after buffering matrix sends until VAU is not blocked on the "din" channel
         // (the number can be calculated beforehand but this is an easy way to do it as well)
@@ -293,8 +307,11 @@ proc Tester {
 
         let (tok, cmd_addr_one) = recv(tok, vecbuf_bank_addr[0]);
         let tok = send(tok, vecbuf_din[0], vau0_bank[cmd_addr_one[0+:u30] as u32]);
+        // finally grab the EOD command
+        let (tok, req_i) = recv(tok, streaming_addr);
+        trace_fmt!("EOD StreamAddr: {:0x}", req_i);
+        let tok = send(tok, streaming_payload_one, matrix_helper::StreamPayload<u32: 2>{payload_type_one: zero!<uN[64][2]>(), commands: req_i.commands});
         // PART 1------------------------------------------------------
-
         // try to make this as streamlined as possible
         // PART 2------------------------------------------------------
         let (tok, addr) = recv(tok, hbm_vector_addr);
@@ -316,21 +333,30 @@ proc Tester {
         let vau0_bank = update(vau0_bank, cmd_addr_one[0+:u30] as u32, data_one);
         let vau1_bank = update(vau1_bank, cmd_addr_two[0+:u30] as u32, data_two);
         trace_fmt!("VAU BANKS: {:0x} {:0x}", vau0_bank, vau1_bank);
-        let (tok, requested_index) = recv(tok, payload_type_one_index);
+        let (tok, requested_index) = recv(tok, metadata_addr);
         trace_fmt!("metadata requested index {:0x}", requested_index);
-        let tok = send(tok, payload_type_one, [u32: 3 ++ u32: 0, u32: 0 ++ u32: 0]);
-        let (tok, requested_index) = recv(tok, payload_type_one_index);
+        let tok = send(tok, metadata_payload, [u32: 3 ++ u32: 0, u32: 0 ++ u32: 0]);
+        let (tok, requested_index) = recv(tok, metadata_addr);
         trace_fmt!("metadata requested index {:0x}", requested_index);
-        let tok = send(tok, payload_type_one, [u32: 3 ++ u32: 0, u32: 3 ++ u32: 0]);
-        let (tok, req_i) = recv(tok, payload_type_one_index);
+        let tok = send(tok, metadata_payload, [u32: 3 ++ u32: 0, u32: 3 ++ u32: 0]);
+        let (tok, req_i) = recv(tok, streaming_addr);
+        trace_fmt!("SOD StreamAddr: {:0x}", req_i);
+        let tok = send(tok, streaming_payload_one, matrix_helper::StreamPayload<u32: 2>{payload_type_one: zero!<uN[64][2]>(), commands: req_i.commands});
+        let (tok, req_i) = recv(tok, streaming_addr);
         trace_fmt!("p1 addr: {:0x}", req_i);
-        let tok = send(tok, payload_type_one, [all_ones!<u32>() ++ u32: 1, all_ones!<u32>() ++ u32: 1]);
-        let (tok, req_i) = recv(tok, payload_type_one_index);
+        let tok = send(tok, streaming_payload_one, matrix_helper::StreamPayload<u32: 2>{payload_type_one: [all_ones!<u32>() ++ u32: 1, all_ones!<u32>() ++ u32: 1], commands: req_i.commands});
+        let (tok, req_i) = recv(tok, streaming_addr);
         trace_fmt!("p1 addr: {:0x}", req_i);
-        let tok = send(tok, payload_type_one, [u32: 0 ++ u32: 3, u32: 0 ++ u32: 5]);
-        let (tok, req_i) = recv(tok, payload_type_one_index);
+        let tok = send(tok, streaming_payload_one, matrix_helper::StreamPayload<u32: 2>{payload_type_one: [u32: 0 ++ u32: 3, u32: 0 ++ u32: 5], commands: req_i.commands});
+        let (tok, req_i) = recv(tok, streaming_addr);
         trace_fmt!("p1 addr: {:0x}", req_i);
-        let tok = send(tok, payload_type_one, [u32: 2 ++ u32: 4, u32: 3 ++ u32: 6]);
+        let tok = send(tok, streaming_payload_one, matrix_helper::StreamPayload<u32: 2>{payload_type_one: [u32: 2 ++ u32: 4, u32: 3 ++ u32: 6], commands: req_i.commands});
+        let (tok, req_i) = recv(tok, streaming_addr);
+        trace_fmt!("EOD StreamAddr: {:0x}", req_i);
+        let tok = send(tok, streaming_payload_one, matrix_helper::StreamPayload<u32: 2>{payload_type_one: zero!<uN[64][2]>(), commands: req_i.commands});
+        let (tok, req_i) = recv(tok, streaming_addr);
+        trace_fmt!("EOS StreamAddr: {:0x}", req_i);
+        let tok = send(tok, streaming_payload_one, matrix_helper::StreamPayload<u32: 2>{payload_type_one: zero!<uN[64][2]>(), commands: req_i.commands});
         let (tok, cmd_addr_one) = recv(tok, vecbuf_bank_addr[0]);
         let tok = send(tok, vecbuf_din[0], vau0_bank[cmd_addr_one[0+:u30] as u32]);
         let (tok, cmd_addr_two) = recv(tok, vecbuf_bank_addr[1]);
@@ -465,21 +491,27 @@ proc Tester {
         let vau0_bank = update(vau0_bank, cmd_addr_one[0+:u30] as u32, data_one);
         let vau1_bank = update(vau1_bank, cmd_addr_two[0+:u30] as u32, data_two);
         trace_fmt!("VAU BANKS: {:0x} {:0x}", vau0_bank, vau1_bank);
-        let (tok, requested_index) = recv(tok, payload_type_one_index);
+        let (tok, requested_index) = recv(tok, metadata_addr);
         trace_fmt!("metadata requested index {:0x}", requested_index);
-        let tok = send(tok, payload_type_one, [u32: 6 ++ u32: 0, u32: 0 ++ u32: 0]);
-        let (tok, requested_index) = recv(tok, payload_type_one_index);
+        let tok = send(tok, metadata_payload, [u32: 6 ++ u32: 0, u32: 0 ++ u32: 0]);
+        let (tok, requested_index) = recv(tok, metadata_addr);
         trace_fmt!("metadata requested index {:0x}", requested_index);
-        let tok = send(tok, payload_type_one, [u32: 3 ++ u32: 0, u32: 3 ++ u32: 0]);
-        let (tok, req_i) = recv(tok, payload_type_one_index);
+        let tok = send(tok, metadata_payload, [u32: 3 ++ u32: 0, u32: 3 ++ u32: 0]);
+        let (tok, req_i) = recv(tok, streaming_addr);
+        trace_fmt!("SOD StreamAddr: {:0x}", req_i);
+        let tok = send(tok, streaming_payload_one, matrix_helper::StreamPayload<u32: 2>{payload_type_one: zero!<uN[64][2]>(), commands: req_i.commands});
+        let (tok, req_i) = recv(tok, streaming_addr);
         trace_fmt!("p1 addr: {:0x}", req_i);
-        let tok = send(tok, payload_type_one, [u32: 0 ++ u32: 7, u32: 0 ++ u32: 8]);
-        let (tok, req_i) = recv(tok, payload_type_one_index);
+        let tok = send(tok, streaming_payload_one, matrix_helper::StreamPayload<u32: 2>{payload_type_one: [u32: 0 ++ u32: 7, u32: 0 ++ u32: 8], commands: req_i.commands});
+        let (tok, req_i) = recv(tok, streaming_addr);
         trace_fmt!("p1 addr: {:0x}", req_i);
-        let tok = send(tok, payload_type_one, [all_ones!<u32>() ++ u32: 1, all_ones!<u32>() ++ u32: 1]);
-        let (tok, req_i) = recv(tok, payload_type_one_index);
+        let tok = send(tok, streaming_payload_one, matrix_helper::StreamPayload<u32: 2>{payload_type_one: [all_ones!<u32>() ++ u32: 1, all_ones!<u32>() ++ u32: 1], commands: req_i.commands});
+        let (tok, req_i) = recv(tok, streaming_addr);
         trace_fmt!("p1 addr: {:0x}", req_i);
-        let tok = send(tok, payload_type_one, [u32: 0 ++ u32: 9, u32: 0 ++ u32: 1]);
+        let tok = send(tok, streaming_payload_one, matrix_helper::StreamPayload<u32: 2>{payload_type_one: [u32: 0 ++ u32: 9, u32: 0 ++ u32: 1], commands: req_i.commands});
+        let (tok, req_i) = recv(tok, streaming_addr);
+        trace_fmt!("EOD StreamAddr: {:0x}", req_i);
+        let tok = send(tok, streaming_payload_one, matrix_helper::StreamPayload<u32: 2>{payload_type_one: zero!<uN[64][2]>(), commands: req_i.commands});
         let (tok, cmd_addr_one) = recv(tok, vecbuf_bank_addr[0]);
         let tok = send(tok, vecbuf_din[0], vau0_bank[cmd_addr_one[0+:u30] as u32]);
         let (tok, cmd_addr_one) = recv(tok, vecbuf_bank_addr[0]);
@@ -510,27 +542,36 @@ proc Tester {
         let vau0_bank = update(vau0_bank, cmd_addr_one[0+:u30] as u32, data_one);
         let vau1_bank = update(vau1_bank, cmd_addr_two[0+:u30] as u32, data_two);
         trace_fmt!("VAU BANKS: {:0x} {:0x}", vau0_bank, vau1_bank);
-        let (tok, requested_index) = recv(tok, payload_type_one_index);
+        let (tok, requested_index) = recv(tok, metadata_addr);
         trace_fmt!("metadata requested index {:0x}", requested_index);
-        let tok = send(tok, payload_type_one, [u32: 9 ++ u32: 0, u32: 0 ++ u32: 0]);
-        let (tok, requested_index) = recv(tok, payload_type_one_index);
+        let tok = send(tok, metadata_payload, [u32: 9 ++ u32: 0, u32: 0 ++ u32: 0]);
+        let (tok, requested_index) = recv(tok, metadata_addr);
         trace_fmt!("metadata requested index {:0x}", requested_index);
-        let tok = send(tok, payload_type_one, [u32: 5 ++ u32: 0, u32: 5 ++ u32: 0]);
-        let (tok, req_i) = recv(tok, payload_type_one_index);
+        let tok = send(tok, metadata_payload, [u32: 5 ++ u32: 0, u32: 5 ++ u32: 0]);
+        let (tok, req_i) = recv(tok, streaming_addr);
+        trace_fmt!("SOD StreamAddr: {:0x}", req_i);
+        let tok = send(tok, streaming_payload_one, matrix_helper::StreamPayload<u32: 2>{payload_type_one: zero!<uN[64][2]>(), commands: req_i.commands});
+        let (tok, req_i) = recv(tok, streaming_addr);
         trace_fmt!("p1 addr: {:0x}", req_i);
-        let tok = send(tok, payload_type_one, [u32: 1 ++ u32: 2, u32: 1 ++ u32: 3]);
-        let (tok, req_i) = recv(tok, payload_type_one_index);
+        let tok = send(tok, streaming_payload_one, matrix_helper::StreamPayload<u32: 2>{payload_type_one: [u32: 1 ++ u32: 2, u32: 1 ++ u32: 3], commands: req_i.commands});
+        let (tok, req_i) = recv(tok, streaming_addr);
         trace_fmt!("p1 addr: {:0x}", req_i);
-        let tok = send(tok, payload_type_one, [u32: 2 ++ u32: 4, u32: 2 ++ u32: 5]);
-        let (tok, req_i) = recv(tok, payload_type_one_index);
+        let tok = send(tok, streaming_payload_one, matrix_helper::StreamPayload<u32: 2>{payload_type_one: [u32: 2 ++ u32: 4, u32: 2 ++ u32: 5], commands: req_i.commands});
+        let (tok, req_i) = recv(tok, streaming_addr);
         trace_fmt!("p1 addr: {:0x}", req_i);
-        let tok = send(tok, payload_type_one, [u32: 3 ++ u32: 6, u32: 3 ++ u32: 7]);
-        let (tok, req_i) = recv(tok, payload_type_one_index);
+        let tok = send(tok, streaming_payload_one, matrix_helper::StreamPayload<u32: 2>{payload_type_one: [u32: 3 ++ u32: 6, u32: 3 ++ u32: 7], commands: req_i.commands});
+        let (tok, req_i) = recv(tok, streaming_addr);
         trace_fmt!("p1 addr: {:0x}", req_i);
-        let tok = send(tok, payload_type_one, [all_ones!<u32>() ++ u32: 1, all_ones!<u32>() ++ u32: 1]);
-        let (tok, req_i) = recv(tok, payload_type_one_index);
+        let tok = send(tok, streaming_payload_one, matrix_helper::StreamPayload<u32: 2>{payload_type_one: [all_ones!<u32>() ++ u32: 1, all_ones!<u32>() ++ u32: 1], commands: req_i.commands});
+        let (tok, req_i) = recv(tok, streaming_addr);
         trace_fmt!("p1 addr: {:0x}", req_i);
-        let tok = send(tok, payload_type_one, [u32: 2 ++ u32: 8, u32: 2 ++ u32: 9]);
+        let tok = send(tok, streaming_payload_one, matrix_helper::StreamPayload<u32: 2>{payload_type_one: [u32: 2 ++ u32: 8, u32: 2 ++ u32: 9], commands: req_i.commands});
+        let (tok, req_i) = recv(tok, streaming_addr);
+        trace_fmt!("EOD StreamAddr: {:0x}", req_i);
+        let tok = send(tok, streaming_payload_one, matrix_helper::StreamPayload<u32: 2>{payload_type_one: zero!<uN[64][2]>(), commands: req_i.commands});
+        let (tok, req_i) = recv(tok, streaming_addr);
+        trace_fmt!("EOS StreamAddr: {:0x}", req_i);
+        let tok = send(tok, streaming_payload_one, matrix_helper::StreamPayload<u32: 2>{payload_type_one: zero!<uN[64][2]>(), commands: req_i.commands});
         let (tok, cmd_addr_one) = recv(tok, vecbuf_bank_addr[0]);
         let tok = send(tok, vecbuf_din[0], vau0_bank[cmd_addr_one[0+:u30] as u32]);
         let (tok, cmd_addr_two) = recv(tok, vecbuf_bank_addr[1]);
@@ -665,10 +706,6 @@ proc Tester {
         trace_fmt!("requested write out addr: {:0x}", output_addr);
         let (tok, output_pld) = recv(tok, output_buffer_hbm_vector_payload);
         trace_fmt!("requested write out payload: {:0x}", output_pld);
-        // let (tok, p2_one) = recv(tok, sf_out[0]);
-        // let (tok, p2_two) = recv(tok, sf_out[1]);
-        // trace_fmt!("p2 one  EOS: {:0x}", p2_one);
-        // trace_fmt!("p2 two  EOS: {:0x}", p2_two);
         let tok = send(tok, terminator, true);
         trace_fmt!("done");
         tester_state
