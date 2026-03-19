@@ -85,9 +85,10 @@ pub fn arbiter<
             // payload input
             (resend_v, update(resend_p, ilid, payload[ilid]))
         };
+        // trace_fmt!("this {:0x} was this {:0x} {:0x} {:0x}", payload, i_valid[ilid], xbar_select[requested_olid] == ilid, xbar_valid[requested_olid]);
         (new_resend_v, new_resend_p)
     }((zero!<u1[NUM_STREAMS]>(), zero!<uN[96][NUM_STREAMS]>()));
-
+    // trace_fmt!("verdict on {:0x} was {:0x} {:0x}", payload, resend_valid, i_valid);
     (
         payload,
         resend_valid,

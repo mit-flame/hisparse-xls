@@ -4,8 +4,8 @@ import matrix_loader_send;
 import vector_loader;
 import vector_unpacker;
 import vector_buffer_access_unit;
+import generic_syncer;
 import shuffler_core;
-import shuffler;
 import arbiter_helper;
 import arbiter;
 import pe;
@@ -83,19 +83,15 @@ proc Tester {
         let (ptype2_out, ptype2_in) = chan<uN[96]>[u32: 2]("ml_payload_type_two_channel");
         let (stream_payload_out, stream_payload_in) = chan<matrix_helper::StreamPayload<u32: 2>>("ml_stream_payload");
         spawn matrix_loader_recv::matrix_loader_recv<u32: 2>(stream_payload_in, ptype2_out);
+        let (syncout, syncin) = chan<uN[96]>[u32: 2]("sync_sod_sfone");
+        spawn generic_syncer::generic_syncer<u32: 2, u2: 1>(ptype2_in, syncout);
         let (sf_ptype2_out, sf_ptype2_in) = chan<uN[96]>[u32: 2]("sf_payload_type_two_channel");
-        let (spttio, spttii) = chan<uN[96]>[u32: 2]("sptti");
-        let (spttoo, spttoi) = chan<uN[96]>[u32: 2]("sptto");
-        spawn shuffler::shuffler<u32: 2>(
-            ptype2_in, sf_ptype2_out,
-            spttio, spttoi
-        );
         let (aptto, aptti) = chan<uN[96][u32: 2]>("arbiter_aptt");
         let (aivo, aivi) = chan<u1[u32: 2]>("arbiter_aiv");
         let (aroo, aroi) = chan<u32>("arbiter_aro");
         let (aco, aci) = chan<arbiter_helper::ArbOut<u32: 2>>("ac");
-        spawn shuffler_core::shuffler_core<u32: 2, u32: 8>(
-            spttii, spttoo,
+        spawn shuffler_core::shuffler_core<u32: 0, u32: 2, u32: 8>(
+            syncin, sf_ptype2_out,
             aptto, aivo, aroo, aci
         );
         spawn arbiter::arbiter_wrapper<u32: 2>(aptti, aivi, aroi, aco);
@@ -119,19 +115,15 @@ proc Tester {
         spawn vector_buffer_access_unit::vecbuf_access_unit<u32: 2, u32: 2>(sf_ptype2_in[1], mvpti[1], vncpi[1], mvbao[1], mvdoo[1], mvdii[1], mptto[1]);
 
         // final shuffler out. I can use the same shuffler since the index is in the same spot bitwise
+        let (syncout, syncin) = chan<uN[96]>[u32: 2]("sync_sod_sftwo");
+        spawn generic_syncer::generic_syncer<u32: 2, u2: 1>(mptti, syncout);
         let (sf_pt3_out, sf_pt3_in) = chan<uN[96]>[u32: 2]("sf_pt3");
-        let (spttio, spttii) = chan<uN[96]>[u32: 2]("sptti");
-        let (spttoo, spttoi) = chan<uN[96]>[u32: 2]("sptto");
-        spawn shuffler::shuffler<u32: 2>(
-            mptti, sf_pt3_out,
-            spttio, spttoi
-        );
         let (aptto, aptti) = chan<uN[96][u32: 2]>("arbiter_aptt");
         let (aivo, aivi) = chan<u1[u32: 2]>("arbiter_aiv");
         let (aroo, aroi) = chan<u32>("arbiter_aro");
         let (aco, aci) = chan<arbiter_helper::ArbOut<u32: 2>>("ac");
-        spawn shuffler_core::shuffler_core<u32: 2, u32: 8>(
-            spttii, spttoo,
+        spawn shuffler_core::shuffler_core<u32: 1, u32: 2, u32: 8>(
+            syncin, sf_pt3_out,
             aptto, aivo, aroo, aci
         );
         spawn arbiter::arbiter_wrapper<u32: 2>(aptti, aivi, aroi, aco);
@@ -142,8 +134,8 @@ proc Tester {
         let (cnruo, cnrui) = chan<u30>[u32: 2]("cnru");
         let (csio, csii) = chan<u32>[u32: 2]("csi");
         let (cpt4o, cpt4i) = chan<uN[64]>[u32: 2]("cpt4");
-        spawn pe::processing_engine<u32: 2, u32: 2, u32: 5>(sf_pt3_in[0], cvbao[0], cvbdii[0], cvbdoo[0], cnrui[0], csii[0], cpt4o[0]);
-        spawn pe::processing_engine<u32: 2, u32: 2, u32: 5>(sf_pt3_in[1], cvbao[1], cvbdii[1], cvbdoo[1], cnrui[1], csii[1], cpt4o[1]);
+        spawn pe::processing_engine<u32: 2, u32: 2, u32: 5, u32: 0>(sf_pt3_in[0], cvbao[0], cvbdii[0], cvbdoo[0], cnrui[0], csii[0], cpt4o[0]);
+        spawn pe::processing_engine<u32: 2, u32: 2, u32: 5, u32: 1>(sf_pt3_in[1], cvbao[1], cvbdii[1], cvbdoo[1], cnrui[1], csii[1], cpt4o[1]);
 
         // PEs to cluster packer (cluster packer vector payload is the acronym)
         // only one cluster but this still must be an array

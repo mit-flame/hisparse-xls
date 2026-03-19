@@ -39,19 +39,6 @@ pub proc processing_engine<NUM_STREAMS: u32, BANK_SIZE: u32, QUEUE_DEPTH: u32>
 
     next(state: (u32, u32, u30, u30, uN[64][QUEUE_DEPTH], token, uN[96], u32)) {
 
-
-        // trace_fmt!(" ");
-        // trace_fmt!(" current state ");
-        // trace_fmt!("---------------");
-        // trace_fmt!("state  : {:0x}", state.0);
-        // trace_fmt!("strmid : {:0x}", state.1);
-        // trace_fmt!("nmrowup: {:0x}", state.2);
-        // trace_fmt!("bnkindx: {:0x}", state.3);
-        // trace_fmt!("ifwq   : {:0x}", state.4);
-        // trace_fmt!("---------------");
-        // trace_fmt!(" ");
-        // trace_fmt!(" ");
-
         let (vba_tx, vbd_tx, ptf_tx, ptt_rx, vbd_rx, nru_rx, si_rx) =
         match (state.0) {
             u32: 0 => {(false, false, false, false, false, true, true)},
@@ -123,6 +110,16 @@ pub proc processing_engine<NUM_STREAMS: u32, BANK_SIZE: u32, QUEUE_DEPTH: u32>
             _ => {(u32: 0, u32: 0, uN[64]: 0)}
         };
 
+        // trace_fmt!("---------------");
+        // trace_fmt!("state  : {:0x}", state.0);
+        // trace_fmt!("strmid : {:0x}", state.1);
+        // trace_fmt!("nmrowup: {:0x}", state.2);
+        // trace_fmt!("bnkindx: {:0x}", state.3);
+        // trace_fmt!("ifwq   : {:0x}", state.4);
+        // trace_fmt!("{:0x} sends {:0x} {:0x} {:0x} ", DEBUG_NAME, vba_pld, vbd_pld, ptf_pld);
+        // trace_fmt!("bools {:0x} {:0x} {:0x} {:0x} {:0x} {:0x} {:0x} ", vba_tx, vbd_tx, ptf_tx, ptt_rx, vbd_rx, nru_rx, si_rx);
+
+
         let t1 = send_if(state.5, vecbuf_bank_addr, vba_tx, vba_pld);
         let t2 = send_if(state.5, vecbuf_bank_dout, vbd_tx, vbd_pld);
         let t3 = send_if(state.5, payload_type_four, ptf_tx, ptf_pld);
@@ -131,6 +128,10 @@ pub proc processing_engine<NUM_STREAMS: u32, BANK_SIZE: u32, QUEUE_DEPTH: u32>
         let (t6, nru_pld) = recv_if(state.5, num_rows_updated, nru_rx, u30: 0);
         let (t7, si_pld) = recv_if(state.5, stream_id, si_rx, u32: 0);
         let new_tok = join(t1, t2, t3, t4, t5, t6, t7);
+
+
+        // trace_fmt!("{:0x} recvs {:0x} {:0x} {:0x} {:0x}", DEBUG_NAME, ptt_pld, vbdin_pld, nru_pld, si_pld);
+        // trace_fmt!("---------------");
 
         let (st0, st1, st2, st3, st4, st6, st7) =
         match (state.0) {

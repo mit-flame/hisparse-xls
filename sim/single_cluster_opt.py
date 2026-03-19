@@ -101,7 +101,6 @@ if __name__ == "__main__":
         "__t__arbiter_wrapper_0_next.sv",
         "__t__matrix_loader_recv_0_next.sv",
         "__t__matrix_loader_send_0_next.sv",
-        "__t__shuffler_0_next.sv",
         "__t__shuffler_core_0_next.sv",
         "__t__vecbuf_access_unit_0_next.sv",
         "__t__vector_loader_0_next.sv",

@@ -56,7 +56,7 @@ clean:
 ifeq ($(MODE),actual)
 all: sf sf_core arb ml vl vau vunpack pe cpacker cmerger kmerger
 else ifeq ($(MODE),opt)
-all: sf sf_core arb ml_recv ml_send vl vau vunpack pe cpacker cmerger kmerger
+all: sf_core arb ml_recv ml_send vl vau vunpack pe cpacker cmerger kmerger
 endif
 # intermediate targets
 MODE_REQUIRED_TARGETS := all sf sf_core arb ml vl vau vunpack pe cpacker cmerger kmerger
