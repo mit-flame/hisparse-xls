@@ -56,7 +56,7 @@ clean:
 ifeq ($(MODE),actual)
 all: sf sf_core arb ml vl vau vunpack pe cpacker cmerger kmerger
 else ifeq ($(MODE),opt)
-all: sf_core arb ml_recv ml_send vl vau vunpack pe cpacker cmerger kmerger
+all: generic_syncer sf_core arb ml_recv ml_send vl vau vunpack pe cpacker cmerger kmerger
 endif
 # intermediate targets
 MODE_REQUIRED_TARGETS := all sf sf_core arb ml vl vau vunpack pe cpacker cmerger kmerger
@@ -89,7 +89,8 @@ ifeq ($(MODE),opt)
 CODEGEN_DSLX_PATH := $(OPT_CODEGEN_DSLX_PATH)
 II := 1
 OPT_LEVEL := --opt_level=3
-SF_CODEGEN_FLAGS := --pipeline_stages=3 --worst_case_throughput=$(II) --delay_model=unit --reset=rst --flop_inputs_kind=skid
+SYNC_COMMAND := 1 # sync SOD /w the SOD syncer that preceds the sf_core
+GENERIC_SYNCER_CODEGEN_FLAGS := --pipeline_stages=3 --worst_case_throughput=$(II) --delay_model=unit --reset=rst
 SF_CORE_CODEGEN_FLAGS := --pipeline_stages=3 --worst_case_throughput=$(II) --delay_model=unit --reset=rst --flop_inputs_kind=skid
 ARBITER_CODEGEN_FLAGS := --pipeline_stages=$(ARBITER_STAGES) --worst_case_throughput=$(II) --flop_inputs_kind=skid --delay_model=unit --reset=rst
 ML_RECV_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
@@ -112,6 +113,20 @@ hdl/__t__shuffler_0_next.sv: xls/$(MODE)/shuffle/shuffler.x
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=shuffler > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(SF_CODEGEN_FLAGS) t.opt.ir > __t__shuffler_0_next.sv
+	rm hdl/t.x
+	rm hdl/t.ir
+	rm hdl/t.opt.ir
+
+.PHONY: generic_syncer
+generic_syncer: hdl/__t__generic_syncer_0_next.sv
+hdl/__t__generic_syncer_0_next.sv: xls/$(MODE)/shuffle/generic_syncer.x
+	cat xls/$(MODE)/shuffle/generic_syncer.x > hdl/t.x
+	sed -i -e 's/<NUM_STREAMS: u32, COMMAND: u2>//g' hdl/t.x
+	sed -i -e '/NUM_STREAMS:/!s/NUM_STREAMS/u32: $(NUM_STREAMS)/g' hdl/t.x
+	sed -i -e 's/COMMAND/u2: $(SYNC_COMMAND)/g' hdl/t.x
+	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=generic_syncer > t.ir
+	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
+	cd hdl; $(CODEGEN_PATH) $(SF_CORE_CODEGEN_FLAGS) t.opt.ir > __t__generic_syncer_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
