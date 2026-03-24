@@ -52,3 +52,19 @@ pub fn unpack_matrix_payload_two(
 {
     (matrix_payload_two[94+:u2], matrix_payload_two[64+:u30], matrix_payload_two[32+: u32], matrix_payload_two[0+:u32])
 }
+
+pub struct StreamAddr{
+    read_or_write: u1,
+    commands: u2,
+    addr: u29, // lol u29
+    write_pld: u32,
+    matrix_pld: u32,
+    row_indx: u32
+}
+
+pub struct StreamPayload{
+    commands: u2,
+    row_index: u30,
+    vector: u32,
+    matrix_pld: u32
+}

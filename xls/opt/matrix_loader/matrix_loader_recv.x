@@ -3,7 +3,7 @@ import matrix_helper;
 
 pub proc matrix_loader_recv<NUM_STREAMS: u32>
 {
-    streaming_payload_one:                     chan<matrix_helper::StreamPayload<NUM_STREAMS>> in;
+    streaming_payload_one:                  chan<matrix_helper::StreamPayload<NUM_STREAMS>> in;
     multistream_payload_type_two:           chan<uN[96]>[NUM_STREAMS] out;
 
     config(
@@ -26,7 +26,7 @@ pub proc matrix_loader_recv<NUM_STREAMS: u32>
         let payload_one = spo_pld.payload_type_one;
         let commands = spo_pld.commands;
         // SOD command will reset the row array
-        let new_row_array = if (spo_pld.commands[30+:u2] == u2: 1) { matrix_init_state::matrix_loader_initial_state<NUM_STREAMS>() } else { state.0 };
+        let new_row_array = if (commands == u2: 1) { matrix_init_state::matrix_loader_initial_state<NUM_STREAMS>() } else { state.0 };
         
         let (new_row_array, new_tok) =
         unroll_for! (idx, (array, tok)) : (u32, (u32[NUM_STREAMS], token)) in u32:0..NUM_STREAMS {
@@ -36,7 +36,7 @@ pub proc matrix_loader_recv<NUM_STREAMS: u32>
             let pld_data = if (next_row_marker_predicate) { u32: 0 } else { data };
             let new_array = if (next_row_marker_predicate) { update(array, idx, array[idx] + (data*NUM_STREAMS)) } else { array };
             // SOD, EOD, EOS commands will be sent with zerod payloads, otherwise regular conversion
-            let outgoing_payload_two = if (commands[30+:u2] != u2: 0) { commands[30+:u2] ++ uN[94]: 0 } else { u2: 0 ++ pld_index ++ new_array[idx] ++ pld_data };
+            let outgoing_payload_two = if (commands != u2: 0) { commands ++ uN[94]: 0 } else { u2: 0 ++ pld_index ++ new_array[idx] ++ pld_data };
             // trace_fmt!("received {:0x}", spo_pld);
             // trace_fmt!("sending to {:0x}    {:0x}",idx, outgoing_payload_two);
             let n_tok = send(tok, multistream_payload_type_two[idx], outgoing_payload_two);

@@ -116,9 +116,8 @@ pub proc processing_engine<NUM_STREAMS: u32, BANK_SIZE: u32, QUEUE_DEPTH: u32>
         // trace_fmt!("nmrowup: {:0x}", state.2);
         // trace_fmt!("bnkindx: {:0x}", state.3);
         // trace_fmt!("ifwq   : {:0x}", state.4);
-        // trace_fmt!("{:0x} sends {:0x} {:0x} {:0x} ", DEBUG_NAME, vba_pld, vbd_pld, ptf_pld);
+        // trace_fmt!("{:0x} sends {:0x} {:0x} {:0x} ", state.1, vba_pld, vbd_pld, ptf_pld);
         // trace_fmt!("bools {:0x} {:0x} {:0x} {:0x} {:0x} {:0x} {:0x} ", vba_tx, vbd_tx, ptf_tx, ptt_rx, vbd_rx, nru_rx, si_rx);
-
 
         let t1 = send_if(state.5, vecbuf_bank_addr, vba_tx, vba_pld);
         let t2 = send_if(state.5, vecbuf_bank_dout, vbd_tx, vbd_pld);
@@ -130,7 +129,7 @@ pub proc processing_engine<NUM_STREAMS: u32, BANK_SIZE: u32, QUEUE_DEPTH: u32>
         let new_tok = join(t1, t2, t3, t4, t5, t6, t7);
 
 
-        // trace_fmt!("{:0x} recvs {:0x} {:0x} {:0x} {:0x}", DEBUG_NAME, ptt_pld, vbdin_pld, nru_pld, si_pld);
+        // trace_fmt!("{:0x} recvs {:0x} {:0x} {:0x} {:0x}", state.1, ptt_pld, vbdin_pld, nru_pld, si_pld);
         // trace_fmt!("---------------");
 
         let (st0, st1, st2, st3, st4, st6, st7) =

@@ -5,33 +5,23 @@ module single_cluster_opt(
   // ML-send inputs/outputs
   input wire [31:0] t__cur_row_partition,
   input wire t__cur_row_partition_vld,
-  input wire t__metadata_addr_rdy,
   input wire [127:0] t__metadata_payload,
   input wire t__metadata_payload_vld,
   input wire [31:0] t__num_col_partitions,
   input wire t__num_col_partitions_vld,
-  input wire t__streaming_addr_rdy,
   input wire [31:0] t__tot_num_partitions,
   input wire t__tot_num_partitions_vld,
+  input wire t__unified_addr_rdy,
+  output wire [63:0] t__unified_addr,
+  output wire t__unified_addr_vld,
   output wire t__cur_row_partition_rdy,
-  output wire [31:0] t__metadata_addr,
-  output wire t__metadata_addr_vld,
-  output wire t__metadata_payload_rdy,
   output wire t__num_col_partitions_rdy,
-  output wire [63:0] t__streaming_addr,
-  output wire t__streaming_addr_vld,
   output wire t__tot_num_partitions_rdy,
 
   // ML-recv inputs/outputs
-  input wire t__multistream_payload_type_two__0_rdy,
-  input wire t__multistream_payload_type_two__1_rdy,
-  input wire [159:0] t__streaming_payload_one,
-  input wire t__streaming_payload_one_vld,
-  output wire [95:0] t__multistream_payload_type_two__0,
-  output wire t__multistream_payload_type_two__0_vld,
-  output wire [95:0] t__multistream_payload_type_two__1,
-  output wire t__multistream_payload_type_two__1_vld,
-  output wire t__streaming_payload_one_rdy,
+  input wire [159:0] t__unified_pld,
+  input wire t__unified_pld_vld,
+  output wire t__unified_pld_rdy,
 
   // VL inputs/outputs
   input wire t__hbm_vector_addr_rdy,
@@ -47,30 +37,24 @@ module single_cluster_opt(
   // VAU 0 inputs/outputs
   input wire [31:0] vecbuf0_t__num_col_partitions,
   input wire vecbuf0_t__num_col_partitions_vld,
-  input wire vecbuf0_t__vecbuf_bank_addr_rdy,
-  input wire [31:0] vecbuf0_t__vecbuf_din,
-  input wire vecbuf0_t__vecbuf_din_vld,
-  input wire vecbuf0_t__vecbuf_dout_rdy,
+  input wire vecbuf0_t__unified_addr_rdy,
+  input wire [95:0] vecbuf0_t__streaming_pld,
+  input wire vecbuf0_t__streaming_pld_vld,
   output wire vecbuf0_t__num_col_partitions_rdy,
-  output wire [31:0] vecbuf0_t__vecbuf_bank_addr,
-  output wire vecbuf0_t__vecbuf_bank_addr_vld,
-  output wire vecbuf0_t__vecbuf_din_rdy,
-  output wire [31:0] vecbuf0_t__vecbuf_dout,
-  output wire vecbuf0_t__vecbuf_dout_vld,
+  output wire [127:0] vecbuf0_t__unified_addr,
+  output wire vecbuf0_t__unified_addr_vld,
+  output wire vecbuf0_t__streaming_pld_rdy,
 
   // VAU 1 inputs/outputs
   input wire [31:0] vecbuf1_t__num_col_partitions,
   input wire vecbuf1_t__num_col_partitions_vld,
-  input wire vecbuf1_t__vecbuf_bank_addr_rdy,
-  input wire [31:0] vecbuf1_t__vecbuf_din,
-  input wire vecbuf1_t__vecbuf_din_vld,
-  input wire vecbuf1_t__vecbuf_dout_rdy,
+  input wire vecbuf1_t__unified_addr_rdy,
+  input wire [95:0] vecbuf1_t__streaming_pld,
+  input wire vecbuf1_t__streaming_pld_vld,
   output wire vecbuf1_t__num_col_partitions_rdy,
-  output wire [31:0] vecbuf1_t__vecbuf_bank_addr,
-  output wire vecbuf1_t__vecbuf_bank_addr_vld,
-  output wire vecbuf1_t__vecbuf_din_rdy,
-  output wire [31:0] vecbuf1_t__vecbuf_dout,
-  output wire vecbuf1_t__vecbuf_dout_vld,
+  output wire [127:0] vecbuf1_t__unified_addr,
+  output wire vecbuf1_t__unified_addr_vld,
+  output wire vecbuf1_t__streaming_pld_rdy,
 
   // PE 0 inputs/outputs
   input wire [29:0] pe0_t__num_rows_updated,
@@ -133,43 +117,92 @@ module single_cluster_opt(
   logic ml_t__multistream_payload_type_two__0_vld;
   logic [95:0] ml_t__multistream_payload_type_two__1;
   logic ml_t__multistream_payload_type_two__1_vld;
+
+  logic [63:0] mlsend_metadata_addr;
+  logic mlsend_metadata_addr_vld;
+  logic [63:0] mlsend_streaming_addr;
+  logic mlsend_streaming_addr_vld;
+  logic mlsend_metadata_payload_rdy;
+
   __t__matrix_loader_send_0_next mlsend(
     .clk(clk),
     .rst(rst),
     .t__cur_row_partition(t__cur_row_partition),
     .t__cur_row_partition_vld(t__cur_row_partition_vld),
-    .t__metadata_addr_rdy(t__metadata_addr_rdy),
-    .t__metadata_payload(t__metadata_payload),
-    .t__metadata_payload_vld(t__metadata_payload_vld),
+    .t__metadata_addr_rdy(ml_addr_arb_t__metadata_addr_rdy),
+    .t__metadata_payload(ml_pld_metadata_pld),
+    .t__metadata_payload_vld(ml_pld_metadata_pld_vld),
     .t__num_col_partitions(t__num_col_partitions),
     .t__num_col_partitions_vld(t__num_col_partitions_vld),
-    .t__streaming_addr_rdy(t__streaming_addr_rdy),
+    .t__streaming_addr_rdy(ml_addr_arb_t__streaming_addr_rdy),
     .t__tot_num_partitions(t__tot_num_partitions),
     .t__tot_num_partitions_vld(t__tot_num_partitions_vld),
     // outputs
     .t__cur_row_partition_rdy(t__cur_row_partition_rdy),
-    .t__metadata_addr(t__metadata_addr),
-    .t__metadata_addr_vld(t__metadata_addr_vld),
-    .t__metadata_payload_rdy(t__metadata_payload_rdy),
+    .t__metadata_addr(mlsend_metadata_addr),
+    .t__metadata_addr_vld(mlsend_metadata_addr_vld),
+    .t__metadata_payload_rdy(mlsend_metadata_payload_rdy),
     .t__num_col_partitions_rdy(t__num_col_partitions_rdy),
-    .t__streaming_addr(t__streaming_addr),
-    .t__streaming_addr_vld(t__streaming_addr_vld),
+    .t__streaming_addr(mlsend_streaming_addr),
+    .t__streaming_addr_vld(mlsend_streaming_addr_vld),
     .t__tot_num_partitions_rdy(t__tot_num_partitions_rdy)
   );
+
+
+  logic ml_addr_arb_t__metadata_addr_rdy;
+  logic ml_addr_arb_t__streaming_addr_rdy;
+
+  __t__matrix_loader_addr_arbiter_0_next ml_addr_arb(
+    .clk(clk),
+    .rst(rst),
+    .t__metadata_addr(mlsend_metadata_addr),
+    .t__metadata_addr_vld(mlsend_metadata_addr_vld),
+    .t__streaming_addr(mlsend_streaming_addr),
+    .t__streaming_addr_vld(mlsend_streaming_addr_vld),
+    .t__unified_addr_rdy(t__unified_addr_rdy),
+    // outputs
+    .t__metadata_addr_rdy(ml_addr_arb_t__metadata_addr_rdy),
+    .t__streaming_addr_rdy(ml_addr_arb_t__streaming_addr_rdy),
+    .t__unified_addr(t__unified_addr),
+    .t__unified_addr_vld(t__unified_addr_vld)
+  );
+
+  logic [159:0] ml_pld_metadata_pld;
+  logic ml_pld_metadata_pld_vld;
+  logic [159:0] ml_pld_streaming_pld;
+  logic ml_pld_streaming_pld_vld;
+
+ __t__matrix_loader_pld_arbiter_0_next ml_pld_arb(
+  .clk(clk),
+  .rst(rst),
+  .t__metadata_pld_rdy(mlsend_metadata_payload_rdy),
+  .t__streaming_pld_rdy(ml_recv_streaming_pld_rdy),
+  .t__unified_pld(t__unified_pld),
+  .t__unified_pld_vld(t__unified_pld_vld),
+  // outputs
+  .t__metadata_pld(ml_pld_metadata_pld),
+  .t__metadata_pld_vld(ml_pld_metadata_pld_vld),
+  .t__streaming_pld(ml_pld_streaming_pld),
+  .t__streaming_pld_vld(ml_pld_streaming_pld_vld),
+  .t__unified_pld_rdy(t__unified_pld_rdy)
+);
+
+
+  logic ml_recv_streaming_pld_rdy;
 
   __t__matrix_loader_recv_0_next mlrecv(
     .clk(clk),
     .rst(rst),
     .t__multistream_payload_type_two__0_rdy(sod_sync_one_t__multistream_payload_i__0_rdy),
     .t__multistream_payload_type_two__1_rdy(sod_sync_one_t__multistream_payload_i__1_rdy),
-    .t__streaming_payload_one(t__streaming_payload_one),
-    .t__streaming_payload_one_vld(t__streaming_payload_one_vld),
+    .t__streaming_payload_one(ml_pld_streaming_pld),
+    .t__streaming_payload_one_vld(ml_pld_streaming_pld_vld),
 
     .t__multistream_payload_type_two__0(ml_t__multistream_payload_type_two__0),
     .t__multistream_payload_type_two__0_vld(ml_t__multistream_payload_type_two__0_vld),
     .t__multistream_payload_type_two__1(ml_t__multistream_payload_type_two__1),
     .t__multistream_payload_type_two__1_vld(ml_t__multistream_payload_type_two__1_vld),
-    .t__streaming_payload_one_rdy(t__streaming_payload_one_rdy)
+    .t__streaming_payload_one_rdy(ml_recv_streaming_pld_rdy)
   );
 
   logic arb_one_t__i_valid_rdy;
@@ -205,7 +238,7 @@ module single_cluster_opt(
   logic [95:0] sod_sync_one_t__multistream_payload_o__1;
   logic sod_sync_one_t__multistream_payload_o__1_vld;
 
-  __t__generic_syncer_0_next sod_sync_one(
+  __t__sod_syncer_0_next sod_sync_one(
     // inputs
     .clk(clk),
     .rst(rst),
@@ -354,79 +387,187 @@ module single_cluster_opt(
   /*
     STREAM ZERO==========================================>
   */
-  logic vecbuf0_t__multistream_payload_o__0_rdy;
-  logic vecbuf0_t__multistream_vector_payload_two__0_rdy;
-  logic [95:0] vecbuf0_t__payload_type_three;
-  logic vecbuf0_t__payload_type_three_vld;
+  logic vecbuf0_loading_addr_rdy;
+  logic vecbuf0_streaming_addr_rdy;
 
-  __t__vecbuf_access_unit_0_next vecbuf_zero(
+  __t__vba_addr_arbiter_0_next vecbuf0_addr_arb(
     .clk(clk),
     .rst(rst),
+    .t__loading_addr(vecbuf0_t__loading_addr),
+    .t__loading_addr_vld(vecbuf0_t__loading_addr_vld),
+    .t__streaming_addr(vecbuf0_t__streaming_addr),
+    .t__streaming_addr_vld(vecbuf0_t__streaming_addr_vld),
+    .t__unified_addr_rdy(vecbuf0_t__unified_addr_rdy),
+    // outputs
+    .t__loading_addr_rdy(vecbuf0_loading_addr_rdy),
+    .t__streaming_addr_rdy(vecbuf0_streaming_addr_rdy),
+    .t__unified_addr(vecbuf0_t__unified_addr),
+    .t__unified_addr_vld(vecbuf0_t__unified_addr_vld)
+  );
+
+  logic [127:0] vecbuf0_t__loading_addr;
+  logic vecbuf0_t__loading_addr_vld;
+  logic [127:0] vecbuf0_t__streaming_addr;
+  logic vecbuf0_t__streaming_addr_vld;
+
+  logic vecbuf0_t__multistream_payload_o__0_rdy;
+  logic vecbuf0_t__multistream_vector_payload_two__0_rdy;
+
+  __t__vba_send_0_next vecbuf0_send(
+    .clk(clk),
+    .rst(rst),
+    .t__loading_addr_rdy(vecbuf0_loading_addr_rdy),
     .t__matrix_payload_two(sfcore_one_t__multistream_payload_o__0),
     .t__matrix_payload_two_vld(sfcore_one_t__multistream_payload_o__0_vld),
     .t__num_col_partitions(vecbuf0_t__num_col_partitions),
     .t__num_col_partitions_vld(vecbuf0_t__num_col_partitions_vld),
-    .t__payload_type_three_rdy(sod_sync_two_t__multistream_payload_i__0_rdy),
-    .t__vecbuf_bank_addr_rdy(vecbuf0_t__vecbuf_bank_addr_rdy),
-    .t__vecbuf_din(vecbuf0_t__vecbuf_din),
-    .t__vecbuf_din_vld(vecbuf0_t__vecbuf_din_vld),
-    .t__vecbuf_dout_rdy(vecbuf0_t__vecbuf_dout_rdy),
+    .t__streaming_addr_rdy(vecbuf0_streaming_addr_rdy),
     .t__vector_payload_two(vunpacker_t__multistream_vector_payload_two__0),
     .t__vector_payload_two_vld(vunpacker_t__multistream_vector_payload_two__0_vld),
     // outputs
+    .t__loading_addr(vecbuf0_t__loading_addr),
+    .t__loading_addr_vld(vecbuf0_t__loading_addr_vld),
     .t__matrix_payload_two_rdy(vecbuf0_t__multistream_payload_o__0_rdy),
     .t__num_col_partitions_rdy(vecbuf0_t__num_col_partitions_rdy),
+    .t__streaming_addr(vecbuf0_t__streaming_addr),
+    .t__streaming_addr_vld(vecbuf0_t__streaming_addr_vld),
+    .t__vector_payload_two_rdy(vecbuf0_t__multistream_vector_payload_two__0_rdy)
+  );
+
+
+  logic [95:0] vecbuf0_t__payload_type_three;
+  logic vecbuf0_t__payload_type_three_vld;
+
+  __t__vba_recv_0_next vecbuf0_recv(
+    .clk(clk),
+    .rst(rst),
+    .t__payload_type_three_rdy(eod_syncer_one_vecbuf0_payload_type_three_rdy),
+    .t__streaming_pld(vecbuf0_t__streaming_pld),
+    .t__streaming_pld_vld(vecbuf0_t__streaming_pld_vld),
+    // outputs
     .t__payload_type_three(vecbuf0_t__payload_type_three),
     .t__payload_type_three_vld(vecbuf0_t__payload_type_three_vld),
-    .t__vecbuf_bank_addr(vecbuf0_t__vecbuf_bank_addr),
-    .t__vecbuf_bank_addr_vld(vecbuf0_t__vecbuf_bank_addr_vld),
-    .t__vecbuf_din_rdy(vecbuf0_t__vecbuf_din_rdy),
-    .t__vecbuf_dout(vecbuf0_t__vecbuf_dout),
-    .t__vecbuf_dout_vld(vecbuf0_t__vecbuf_dout_vld),
-    .t__vector_payload_two_rdy(vecbuf0_t__multistream_vector_payload_two__0_rdy)
+    .t__streaming_pld_rdy(vecbuf0_t__streaming_pld_rdy)
   );
   // =============================================================>
 
   /*
     STREAM ONE=====================================================>
   */
+  logic vecbuf1_loading_addr_rdy;
+  logic vecbuf1_streaming_addr_rdy;
+
+  __t__vba_addr_arbiter_0_next vecbuf1_addr_arb(
+    .clk(clk),
+    .rst(rst),
+    .t__loading_addr(vecbuf1_t__loading_addr),
+    .t__loading_addr_vld(vecbuf1_t__loading_addr_vld),
+    .t__streaming_addr(vecbuf1_t__streaming_addr),
+    .t__streaming_addr_vld(vecbuf1_t__streaming_addr_vld),
+    .t__unified_addr_rdy(vecbuf1_t__unified_addr_rdy),
+    // outputs
+    .t__loading_addr_rdy(vecbuf1_loading_addr_rdy),
+    .t__streaming_addr_rdy(vecbuf1_streaming_addr_rdy),
+    .t__unified_addr(vecbuf1_t__unified_addr),
+    .t__unified_addr_vld(vecbuf1_t__unified_addr_vld)
+  );
+
+  logic [127:0] vecbuf1_t__loading_addr;
+  logic vecbuf1_t__loading_addr_vld;
+  logic [127:0] vecbuf1_t__streaming_addr;
+  logic vecbuf1_t__streaming_addr_vld;
 
   logic vecbuf1_t__multistream_payload_o__1_rdy;
   logic vecbuf1_t__multistream_vector_payload_two__1_rdy;
-  logic [95:0] vecbuf1_t__payload_type_three;
-  logic vecbuf1_t__payload_type_three_vld;
 
-  __t__vecbuf_access_unit_0_next vecbuf_one(
+  __t__vba_send_0_next vecbuf1_send(
     .clk(clk),
     .rst(rst),
+    .t__loading_addr_rdy(vecbuf1_loading_addr_rdy),
     .t__matrix_payload_two(sfcore_one_t__multistream_payload_o__1),
     .t__matrix_payload_two_vld(sfcore_one_t__multistream_payload_o__1_vld),
     .t__num_col_partitions(vecbuf1_t__num_col_partitions),
     .t__num_col_partitions_vld(vecbuf1_t__num_col_partitions_vld),
-    .t__payload_type_three_rdy(sod_sync_two_t__multistream_payload_i__1_rdy),
-    .t__vecbuf_bank_addr_rdy(vecbuf1_t__vecbuf_bank_addr_rdy),
-    .t__vecbuf_din(vecbuf1_t__vecbuf_din),
-    .t__vecbuf_din_vld(vecbuf1_t__vecbuf_din_vld),
-    .t__vecbuf_dout_rdy(vecbuf1_t__vecbuf_dout_rdy),
+    .t__streaming_addr_rdy(vecbuf1_streaming_addr_rdy),
     .t__vector_payload_two(vunpacker_t__multistream_vector_payload_two__1),
     .t__vector_payload_two_vld(vunpacker_t__multistream_vector_payload_two__1_vld),
     // outputs
+    .t__loading_addr(vecbuf1_t__loading_addr),
+    .t__loading_addr_vld(vecbuf1_t__loading_addr_vld),
     .t__matrix_payload_two_rdy(vecbuf1_t__multistream_payload_o__1_rdy),
     .t__num_col_partitions_rdy(vecbuf1_t__num_col_partitions_rdy),
-    .t__payload_type_three(vecbuf1_t__payload_type_three),
-    .t__payload_type_three_vld(vecbuf1_t__payload_type_three_vld),
-    .t__vecbuf_bank_addr(vecbuf1_t__vecbuf_bank_addr),
-    .t__vecbuf_bank_addr_vld(vecbuf1_t__vecbuf_bank_addr_vld),
-    .t__vecbuf_din_rdy(vecbuf1_t__vecbuf_din_rdy),
-    .t__vecbuf_dout(vecbuf1_t__vecbuf_dout),
-    .t__vecbuf_dout_vld(vecbuf1_t__vecbuf_dout_vld),
+    .t__streaming_addr(vecbuf1_t__streaming_addr),
+    .t__streaming_addr_vld(vecbuf1_t__streaming_addr_vld),
     .t__vector_payload_two_rdy(vecbuf1_t__multistream_vector_payload_two__1_rdy)
   );
 
+
+  logic [95:0] vecbuf1_t__payload_type_three;
+  logic vecbuf1_t__payload_type_three_vld;
+
+  __t__vba_recv_0_next vecbuf1_recv(
+    .clk(clk),
+    .rst(rst),
+    .t__payload_type_three_rdy(eod_syncer_one_vecbuf1_payload_type_three_rdy),
+    .t__streaming_pld(vecbuf1_t__streaming_pld),
+    .t__streaming_pld_vld(vecbuf1_t__streaming_pld_vld),
+    // outputs
+    .t__payload_type_three(vecbuf1_t__payload_type_three),
+    .t__payload_type_three_vld(vecbuf1_t__payload_type_three_vld),
+    .t__streaming_pld_rdy(vecbuf1_t__streaming_pld_rdy)
+  );
   // =============================================================>
 
+  logic eod_syncer_one_vecbuf0_payload_type_three_rdy;
+  logic eod_syncer_one_vecbuf1_payload_type_three_rdy;
+  logic [95:0] eod_syncer_one_t__multistream_payload_o__0;
+  logic eod_syncer_one_t__multistream_payload_o__0_vld;
+  logic [95:0] eod_syncer_one_t__multistream_payload_o__1;
+  logic eod_syncer_one_t__multistream_payload_o__1_vld;
 
+  __t__eod_syncer_0_next eod_syncer_one(
+    .clk(clk),
+    .rst(rst),
+    .t__multistream_payload_i__0(vecbuf0_t__payload_type_three),
+    .t__multistream_payload_i__0_vld(vecbuf0_t__payload_type_three_vld),
+    .t__multistream_payload_i__1(vecbuf1_t__payload_type_three),
+    .t__multistream_payload_i__1_vld(vecbuf1_t__payload_type_three_vld),
+    .t__multistream_payload_o__0_rdy(sod_sync_two_t__multistream_payload_i__0_rdy),
+    .t__multistream_payload_o__1_rdy(sod_sync_two_t__multistream_payload_i__1_rdy),
+    // outputs
+    .t__multistream_payload_i__0_rdy(eod_syncer_one_vecbuf0_payload_type_three_rdy),
+    .t__multistream_payload_i__1_rdy(eod_syncer_one_vecbuf1_payload_type_three_rdy),
+    .t__multistream_payload_o__0(eod_syncer_one_t__multistream_payload_o__0),
+    .t__multistream_payload_o__0_vld(eod_syncer_one_t__multistream_payload_o__0_vld),
+    .t__multistream_payload_o__1(eod_syncer_one_t__multistream_payload_o__1),
+    .t__multistream_payload_o__1_vld(eod_syncer_one_t__multistream_payload_o__1_vld)
+  );
 
+  logic sod_sync_two_t__multistream_payload_i__0_rdy;
+  logic sod_sync_two_t__multistream_payload_i__1_rdy;
+  logic [95:0] sod_sync_two_t__multistream_payload_o__0;
+  logic sod_sync_two_t__multistream_payload_o__0_vld;
+  logic [95:0] sod_sync_two_t__multistream_payload_o__1;
+  logic sod_sync_two_t__multistream_payload_o__1_vld;
+
+  __t__sod_syncer_0_next sod_sync_two(
+    // inputs
+    .clk(clk),
+    .rst(rst),
+    .t__multistream_payload_i__0(eod_syncer_one_t__multistream_payload_o__0),
+    .t__multistream_payload_i__0_vld(eod_syncer_one_t__multistream_payload_o__0_vld),
+    .t__multistream_payload_i__1(eod_syncer_one_t__multistream_payload_o__1),
+    .t__multistream_payload_i__1_vld(eod_syncer_one_t__multistream_payload_o__1_vld),
+    .t__multistream_payload_o__0_rdy(sfcore_two_t__multistream_payload_i__0_rdy),
+    .t__multistream_payload_o__1_rdy(sfcore_two_t__multistream_payload_i__1_rdy),
+    // outputs
+    .t__multistream_payload_i__0_rdy(sod_sync_two_t__multistream_payload_i__0_rdy),
+    .t__multistream_payload_i__1_rdy(sod_sync_two_t__multistream_payload_i__1_rdy),
+    .t__multistream_payload_o__0(sod_sync_two_t__multistream_payload_o__0),
+    .t__multistream_payload_o__0_vld(sod_sync_two_t__multistream_payload_o__0_vld),
+    .t__multistream_payload_o__1(sod_sync_two_t__multistream_payload_o__1),
+    .t__multistream_payload_o__1_vld(sod_sync_two_t__multistream_payload_o__1_vld)
+  );
 
   logic arb_two_t__i_valid_rdy;
   logic [1:0] arb_two_t__original_input_valid;
@@ -452,32 +593,6 @@ module single_cluster_opt(
     .t__i_valid_rdy(arb_two_t__i_valid_rdy),
     .t__payload_rdy(arb_two_t__payload_rdy),
     .t__rotate_offset_rdy(arb_two_t__rotate_offset_rdy)
-  );
-
-  logic sod_sync_two_t__multistream_payload_i__0_rdy;
-  logic sod_sync_two_t__multistream_payload_i__1_rdy;
-  logic [95:0] sod_sync_two_t__multistream_payload_o__0;
-  logic sod_sync_two_t__multistream_payload_o__0_vld;
-  logic [95:0] sod_sync_two_t__multistream_payload_o__1;
-  logic sod_sync_two_t__multistream_payload_o__1_vld;
-
-  __t__generic_syncer_0_next sod_sync_two(
-    // inputs
-    .clk(clk),
-    .rst(rst),
-    .t__multistream_payload_i__0(vecbuf0_t__payload_type_three),
-    .t__multistream_payload_i__0_vld(vecbuf0_t__payload_type_three_vld),
-    .t__multistream_payload_i__1(vecbuf1_t__payload_type_three),
-    .t__multistream_payload_i__1_vld(vecbuf1_t__payload_type_three_vld),
-    .t__multistream_payload_o__0_rdy(sfcore_two_t__multistream_payload_i__0_rdy),
-    .t__multistream_payload_o__1_rdy(sfcore_two_t__multistream_payload_i__1_rdy),
-    // outputs
-    .t__multistream_payload_i__0_rdy(sod_sync_two_t__multistream_payload_i__0_rdy),
-    .t__multistream_payload_i__1_rdy(sod_sync_two_t__multistream_payload_i__1_rdy),
-    .t__multistream_payload_o__0(sod_sync_two_t__multistream_payload_o__0),
-    .t__multistream_payload_o__0_vld(sod_sync_two_t__multistream_payload_o__0_vld),
-    .t__multistream_payload_o__1(sod_sync_two_t__multistream_payload_o__1),
-    .t__multistream_payload_o__1_vld(sod_sync_two_t__multistream_payload_o__1_vld)
   );
 
   logic [1:0] sfcore_two_t__i_valid;

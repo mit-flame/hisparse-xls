@@ -92,8 +92,8 @@ pub proc shuffler_core <NUM_STREAMS: u32, FLUSH_ITERS: u32> // this will be depe
         }((new_tok, zero!<uN[96][NUM_STREAMS]>()));
         
         let new_tok = join(tok1, tok2, tok3, tok4);
-        // trace_fmt!("{:0x} current state {:0x} {:0x} {:0x} {:0x}", DEBUG_NAME, state.0, state.1, state.2, state.3);
-        // trace_fmt!("{:0x} arb recv {:0x}\n{:0x} mp recv {:0x}\narb send {:0x} {:0x}\n{:0x} mp send {:0x}", DEBUG_NAME, arbout_pld, DEBUG_NAME, mp_pld, arb_payload_in, arb_payload_valid, DEBUG_NAME, debug_send);
+        // trace_fmt!("current state {:0x} {:0x} {:0x} {:0x}", state.0, state.1, state.2, state.3);
+        // trace_fmt!("arb recv {:0x}\nmp recv {:0x}\narb send {:0x} {:0x}\n send {:0x}", arbout_pld, mp_pld, arb_payload_in, arb_payload_valid, debug_send);
         (state.0, new_fetch_complete, new_flush_counter, next_rotate_priority, new_tok, new_sent_eod)
     }
 }

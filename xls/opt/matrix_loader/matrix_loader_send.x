@@ -3,16 +3,16 @@ import matrix_helper;
 
 pub proc matrix_loader_send<NUM_STREAMS: u32>
 {
-    metadata_addr:                          chan<u32> out;
-    metadata_payload:                       chan<uN[64][NUM_STREAMS]> in;
+    metadata_addr:                          chan<matrix_helper::StreamAddr> out;
+    metadata_payload:                       chan<matrix_helper::StreamPayload<NUM_STREAMS>> in;
     streaming_addr:                         chan<matrix_helper::StreamAddr> out;
     cur_row_partition:                      chan<u32> in;
     num_col_partitions:                     chan<u32> in; // constant
     tot_num_partitions:                     chan<u32> in; // constant
 
     config(
-        metadata_addr:                      chan<u32> out,
-        metadata_payload:                   chan<uN[64][NUM_STREAMS]> in,
+        metadata_addr:                      chan<matrix_helper::StreamAddr> out,
+        metadata_payload:                   chan<matrix_helper::StreamPayload<NUM_STREAMS>> in,
         streaming_addr:                     chan<matrix_helper::StreamAddr> out,
         cur_row_partition:                  chan<u32> in,
         num_col_partitions:                 chan<u32> in,  // constant
@@ -128,46 +128,48 @@ pub proc matrix_loader_send<NUM_STREAMS: u32>
                 let part_id = state.1 * state.2 + state.4;
                 let part_meta_idx = part_id * 2;
                 let part_meta_idx = if (state.10 == u32: 0) { part_meta_idx } else { part_meta_idx + u32: 1 };
+                let ma_pld = matrix_helper::StreamAddr{addr: part_meta_idx, message_type: u30: 0, commands: u2: 0};
                 (
-                    part_meta_idx, zero!<matrix_helper::StreamAddr>()
+                    ma_pld, zero!<matrix_helper::StreamAddr>()
                 )
             },
             u32: 12 => {
-                let sa_pld = matrix_helper::StreamAddr{addr: u32: 0, commands: u2: 1 ++ u30: 0};
+                let sa_pld = matrix_helper::StreamAddr{addr: u32: 0, commands: u2: 1, message_type: u30: 1};
                 (
-                    u32: 0, sa_pld
+                    zero!<matrix_helper::StreamAddr>(), sa_pld
                 )
             },
             u32: 2 => {
                 let metadata_offset = state.3 * 2;
                 let payload_idx = metadata_offset + state.5 + state.8;
-                let sa_pld = matrix_helper::StreamAddr{addr: payload_idx, commands: u32: 0};
+                let sa_pld = matrix_helper::StreamAddr{addr: payload_idx, commands: u2: 0, message_type: u30: 1};
                 (
-                    u32: 0, sa_pld
+                    zero!<matrix_helper::StreamAddr>(), sa_pld
                 )
             },
             u32: 30 => {
-                let sa_pld = matrix_helper::StreamAddr{addr: u32: 0, commands: u2: 2 ++ u30: 0};
+                let sa_pld = matrix_helper::StreamAddr{addr: u32: 0, commands: u2: 2, message_type: u30: 1};
                 (
-                    u32: 0, sa_pld
+                    zero!<matrix_helper::StreamAddr>(), sa_pld
                 )
             },
             u32: 31 => {
-                let sa_pld = matrix_helper::StreamAddr{addr: u32: 0, commands: u2: 3 ++ u30: 0};
+                let sa_pld = matrix_helper::StreamAddr{addr: u32: 0, commands: u2: 3, message_type: u30: 1};
                 (
-                    u32: 0, sa_pld
+                    zero!<matrix_helper::StreamAddr>(), sa_pld
                 )
             },
             _ => {
                 (
-                    u32: 0, zero!<matrix_helper::StreamAddr>()
+                    zero!<matrix_helper::StreamAddr>(), zero!<matrix_helper::StreamAddr>()
                 )
             }         
         };
 
         let t1 = send_if(state.9, metadata_addr, ma_tx, ma_pld);
         let t2 = send_if(state.9, streaming_addr, sa_tx, sa_pld);
-        let (t3, mp_pld) = recv_if(state.9, metadata_payload, mp_rx, zero!<uN[64][NUM_STREAMS]>());
+        let (t3, mp_pld) = recv_if(state.9, metadata_payload, mp_rx, zero!<matrix_helper::StreamPayload<NUM_STREAMS>>());
+        let mp_pld = mp_pld.payload_type_one;
         let (t4, crp_pld) = recv_if(state.9, cur_row_partition, crp_rx, u32: 0);
         let (t5, ncp_pld) = recv_if(state.9, num_col_partitions, ncp_rx, u32: 0);
         let (t6, tnp_pld) = recv_if(state.9, tot_num_partitions, tnp_rx, u32: 0);

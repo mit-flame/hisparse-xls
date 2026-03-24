@@ -32,10 +32,12 @@ pub fn max_array<
 
 pub struct StreamAddr{
     addr: u32,
-    commands: u32 // one hot command encoding
+    commands: u2, // is this SOD, EOD, EOS or nothing
+    message_type: u30 // is this a metadata req or a streaming req etc etc
 }
 
 pub struct StreamPayload<NUM_STREAMS: u32>{
     payload_type_one: uN[64][NUM_STREAMS],
-    commands: u32
+    commands: u2,
+    message_type: u30
 }
