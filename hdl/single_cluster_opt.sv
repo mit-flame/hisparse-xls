@@ -5,8 +5,6 @@ module single_cluster_opt(
   // ML-send inputs/outputs
   input wire [31:0] t__cur_row_partition,
   input wire t__cur_row_partition_vld,
-  input wire [127:0] t__metadata_payload,
-  input wire t__metadata_payload_vld,
   input wire [31:0] t__num_col_partitions,
   input wire t__num_col_partitions_vld,
   input wire [31:0] t__tot_num_partitions,
@@ -56,39 +54,47 @@ module single_cluster_opt(
   output wire vecbuf1_t__unified_addr_vld,
   output wire vecbuf1_t__streaming_pld_rdy,
 
-  // PE 0 inputs/outputs
+  // PE0_send inputs/outputs
   input wire [29:0] pe0_t__num_rows_updated,
   input wire pe0_t__num_rows_updated_vld,
+  output wire pe0_t__num_rows_updated_rdy,
+  // PE0_arbiter inputs/outputs
+  input wire pe0_t__unified_addr_rdy,
+  output wire [127:0] pe0_t__unified_addr,
+  output wire pe0_t__unified_addr_vld,
+  // PE0_recv inputs/oututs
   input wire [31:0] pe0_t__stream_id,
   input wire pe0_t__stream_id_vld,
-  input wire pe0_t__vecbuf_bank_addr_rdy,
-  input wire [31:0] pe0_t__vecbuf_bank_din,
-  input wire pe0_t__vecbuf_bank_din_vld,
-  input wire pe0_t__vecbuf_bank_dout_rdy,
-  output wire pe0_t__num_rows_updated_rdy,
+  input wire [127:0] pe0_t__unified_pld,
+  input wire pe0_t__unified_pld_vld,
+  input wire pe0_t__accumulation_addr_rdy,
+  input wire [127:0] pe0_t__dummy_accumulate_pld,
+  input wire pe0_t__dummy_accumulate_pld_vld,
   output wire pe0_t__stream_id_rdy,
-  output wire [31:0] pe0_t__vecbuf_bank_addr,
-  output wire pe0_t__vecbuf_bank_addr_vld,
-  output wire pe0_t__vecbuf_bank_din_rdy,
-  output wire [31:0] pe0_t__vecbuf_bank_dout,
-  output wire pe0_t__vecbuf_bank_dout_vld,
+  output wire pe0_t__unified_pld_rdy,
+  output wire [127:0] pe0_t__accumulation_addr,
+  output wire pe0_t__accumulation_addr_vld,
 
-  // PE 1 inputs/outputs
+  // PE1_send inputs/outputs
   input wire [29:0] pe1_t__num_rows_updated,
   input wire pe1_t__num_rows_updated_vld,
+  output wire pe1_t__num_rows_updated_rdy,
+  // PE1_arbiter inputs/outputs
+  input wire pe1_t__unified_addr_rdy,
+  output wire [127:0] pe1_t__unified_addr,
+  output wire pe1_t__unified_addr_vld,
+  // PE1_recv inputs/oututs
   input wire [31:0] pe1_t__stream_id,
   input wire pe1_t__stream_id_vld,
-  input wire pe1_t__vecbuf_bank_addr_rdy,
-  input wire [31:0] pe1_t__vecbuf_bank_din,
-  input wire pe1_t__vecbuf_bank_din_vld,
-  input wire pe1_t__vecbuf_bank_dout_rdy,
-  output wire pe1_t__num_rows_updated_rdy,
+  input wire [127:0] pe1_t__unified_pld,
+  input wire pe1_t__unified_pld_vld,
+  input wire pe1_t__accumulation_addr_rdy,
+  input wire [127:0] pe1_t__dummy_accumulate_pld,
+  input wire pe1_t__dummy_accumulate_pld_vld,
   output wire pe1_t__stream_id_rdy,
-  output wire [31:0] pe1_t__vecbuf_bank_addr,
-  output wire pe1_t__vecbuf_bank_addr_vld,
-  output wire pe1_t__vecbuf_bank_din_rdy,
-  output wire [31:0] pe1_t__vecbuf_bank_dout,
-  output wire pe1_t__vecbuf_bank_dout_vld,
+  output wire pe1_t__unified_pld_rdy,
+  output wire [127:0] pe1_t__accumulation_addr,
+  output wire pe1_t__accumulation_addr_vld,
 
   // kmerger inputs/outputs
   input wire [31:0] kmerger_t__current_row_partition,
@@ -639,66 +645,149 @@ module single_cluster_opt(
     .t__multistream_payload_o__1_vld(sfcore_two_t__multistream_payload_o__1_vld)
   );
 
-  logic [63:0] pe0_t__payload_type_four;
-  logic pe0_t__payload_type_four_vld;
+  logic [127:0] pe0_t__clearing_addr;
+  logic pe0_t__clearing_addr_vld;
   logic pe0_t__payload_type_three_rdy;
+  logic [127:0] pe0_t__result_addr;
+  logic pe0_t__result_addr_vld;
+  logic [127:0] pe0_t__streaming_addr;
+  logic pe0_t__streaming_addr_vld;
 
-  __t__processing_engine_0_next pe0 (
+  __t__pe_send_0_next pe0_send(
     .clk(clk),
     .rst(rst),
+    .t__clearing_addr_rdy(pe0_addr_arb_t__clearing_addr_rdy),
     .t__num_rows_updated(pe0_t__num_rows_updated),
     .t__num_rows_updated_vld(pe0_t__num_rows_updated_vld),
-    .t__payload_type_four_rdy(cpacker_t__payload_type_four__0_rdy),
     .t__payload_type_three(sfcore_two_t__multistream_payload_o__0),
     .t__payload_type_three_vld(sfcore_two_t__multistream_payload_o__0_vld),
-    .t__stream_id(pe0_t__stream_id),
-    .t__stream_id_vld(pe0_t__stream_id_vld),
-    .t__vecbuf_bank_addr_rdy(pe0_t__vecbuf_bank_addr_rdy),
-    .t__vecbuf_bank_din(pe0_t__vecbuf_bank_din),
-    .t__vecbuf_bank_din_vld(pe0_t__vecbuf_bank_din_vld),
-    .t__vecbuf_bank_dout_rdy(pe0_t__vecbuf_bank_dout_rdy),
-    
+    .t__result_addr_rdy(pe0_addr_arb_t__result_addr_rdy),
+    .t__streaming_addr_rdy(pe0_addr_arb_t__streaming_addr_rdy),
+    // outputs
+    .t__clearing_addr(pe0_t__clearing_addr),
+    .t__clearing_addr_vld(pe0_t__clearing_addr_vld),
     .t__num_rows_updated_rdy(pe0_t__num_rows_updated_rdy),
-    .t__payload_type_four(pe0_t__payload_type_four),
-    .t__payload_type_four_vld(pe0_t__payload_type_four_vld),
     .t__payload_type_three_rdy(pe0_t__payload_type_three_rdy),
-    .t__stream_id_rdy(pe0_t__stream_id_rdy),
-    .t__vecbuf_bank_addr(pe0_t__vecbuf_bank_addr),
-    .t__vecbuf_bank_addr_vld(pe0_t__vecbuf_bank_addr_vld),
-    .t__vecbuf_bank_din_rdy(pe0_t__vecbuf_bank_din_rdy),
-    .t__vecbuf_bank_dout(pe0_t__vecbuf_bank_dout),
-    .t__vecbuf_bank_dout_vld(pe0_t__vecbuf_bank_dout_vld)
-    );
+    .t__result_addr(pe0_t__result_addr),
+    .t__result_addr_vld(pe0_t__result_addr_vld),
+    .t__streaming_addr(pe0_t__streaming_addr),
+    .t__streaming_addr_vld(pe0_t__streaming_addr_vld)
+  );
 
-    logic [63:0] pe1_t__payload_type_four;
-    logic pe1_t__payload_type_four_vld;
-    logic pe1_t__payload_type_three_rdy;
+  logic pe0_addr_arb_t__clearing_addr_rdy;
+  logic pe0_addr_arb_t__result_addr_rdy;
+  logic pe0_addr_arb_t__streaming_addr_rdy;
 
-  __t__processing_engine_0_next pe1 (
+  __t__pe_addr_arbiter_0_next pe0_addr_arb(
     .clk(clk),
     .rst(rst),
+    .t__clearing_addr(pe0_t__clearing_addr),
+    .t__clearing_addr_vld(pe0_t__clearing_addr_vld),
+    .t__result_addr(pe0_t__result_addr),
+    .t__result_addr_vld(pe0_t__result_addr_vld),
+    .t__streaming_addr(pe0_t__streaming_addr),
+    .t__streaming_addr_vld(pe0_t__streaming_addr_vld),
+    .t__unified_addr_rdy(pe0_t__unified_addr_rdy),
+    // outputs
+    .t__clearing_addr_rdy(pe0_addr_arb_t__clearing_addr_rdy),
+    .t__result_addr_rdy(pe0_addr_arb_t__result_addr_rdy),
+    .t__streaming_addr_rdy(pe0_addr_arb_t__streaming_addr_rdy),
+    .t__unified_addr(pe0_t__unified_addr),
+    .t__unified_addr_vld(pe0_t__unified_addr_vld)
+  );
+
+  logic [63:0] pe0_t__payload_type_four;
+  logic pe0_t__payload_type_four_vld;
+
+  __t__pe_recv_0_next pe0_recv(
+    .clk(clk),
+    .rst(rst),
+    .t__accumulation_addr_rdy(pe0_t__accumulation_addr_rdy),
+    .t__payload_type_four_rdy(cpacker_t__payload_type_four__0_rdy),
+    .t__stream_id(pe0_t__stream_id),
+    .t__stream_id_vld(pe0_t__stream_id_vld),
+    .t__unified_pld(pe0_t__unified_pld),
+    .t__unified_pld_vld(pe0_t__unified_pld_vld),
+    // outputs
+    .t__accumulation_addr(pe0_t__accumulation_addr),
+    .t__accumulation_addr_vld(pe0_t__accumulation_addr_vld),
+    .t__payload_type_four(pe0_t__payload_type_four),
+    .t__payload_type_four_vld(pe0_t__payload_type_four_vld),
+    .t__stream_id_rdy(pe0_t__stream_id_rdy),
+    .t__unified_pld_rdy(pe0_t__unified_pld_rdy)
+  );
+
+
+  logic [127:0] pe1_t__clearing_addr;
+  logic pe1_t__clearing_addr_vld;
+  logic pe1_t__payload_type_three_rdy;
+  logic [127:0] pe1_t__result_addr;
+  logic pe1_t__result_addr_vld;
+  logic [127:0] pe1_t__streaming_addr;
+  logic pe1_t__streaming_addr_vld;
+
+  __t__pe_send_0_next pe1_send(
+    .clk(clk),
+    .rst(rst),
+    .t__clearing_addr_rdy(pe1_addr_arb_t__clearing_addr_rdy),
     .t__num_rows_updated(pe1_t__num_rows_updated),
     .t__num_rows_updated_vld(pe1_t__num_rows_updated_vld),
-    .t__payload_type_four_rdy(cpacker_t__payload_type_four__1_rdy),
     .t__payload_type_three(sfcore_two_t__multistream_payload_o__1),
     .t__payload_type_three_vld(sfcore_two_t__multistream_payload_o__1_vld),
+    .t__result_addr_rdy(pe1_addr_arb_t__result_addr_rdy),
+    .t__streaming_addr_rdy(pe1_addr_arb_t__streaming_addr_rdy),
+    // outputs
+    .t__clearing_addr(pe1_t__clearing_addr),
+    .t__clearing_addr_vld(pe1_t__clearing_addr_vld),
+    .t__num_rows_updated_rdy(pe1_t__num_rows_updated_rdy),
+    .t__payload_type_three_rdy(pe1_t__payload_type_three_rdy),
+    .t__result_addr(pe1_t__result_addr),
+    .t__result_addr_vld(pe1_t__result_addr_vld),
+    .t__streaming_addr(pe1_t__streaming_addr),
+    .t__streaming_addr_vld(pe1_t__streaming_addr_vld)
+  );
+
+  logic pe1_addr_arb_t__clearing_addr_rdy;
+  logic pe1_addr_arb_t__result_addr_rdy;
+  logic pe1_addr_arb_t__streaming_addr_rdy;
+
+  __t__pe_addr_arbiter_0_next pe1_addr_arb(
+    .clk(clk),
+    .rst(rst),
+    .t__clearing_addr(pe1_t__clearing_addr),
+    .t__clearing_addr_vld(pe1_t__clearing_addr_vld),
+    .t__result_addr(pe1_t__result_addr),
+    .t__result_addr_vld(pe1_t__result_addr_vld),
+    .t__streaming_addr(pe1_t__streaming_addr),
+    .t__streaming_addr_vld(pe1_t__streaming_addr_vld),
+    .t__unified_addr_rdy(pe1_t__unified_addr_rdy),
+    // outputs
+    .t__clearing_addr_rdy(pe1_addr_arb_t__clearing_addr_rdy),
+    .t__result_addr_rdy(pe1_addr_arb_t__result_addr_rdy),
+    .t__streaming_addr_rdy(pe1_addr_arb_t__streaming_addr_rdy),
+    .t__unified_addr(pe1_t__unified_addr),
+    .t__unified_addr_vld(pe1_t__unified_addr_vld)
+  );
+
+  logic [63:0] pe1_t__payload_type_four;
+  logic pe1_t__payload_type_four_vld;
+
+  __t__pe_recv_0_next pe1_recv(
+    .clk(clk),
+    .rst(rst),
+    .t__accumulation_addr_rdy(pe1_t__accumulation_addr_rdy),
+    .t__payload_type_four_rdy(cpacker_t__payload_type_four__1_rdy),
     .t__stream_id(pe1_t__stream_id),
     .t__stream_id_vld(pe1_t__stream_id_vld),
-    .t__vecbuf_bank_addr_rdy(pe1_t__vecbuf_bank_addr_rdy),
-    .t__vecbuf_bank_din(pe1_t__vecbuf_bank_din),
-    .t__vecbuf_bank_din_vld(pe1_t__vecbuf_bank_din_vld),
-    .t__vecbuf_bank_dout_rdy(pe1_t__vecbuf_bank_dout_rdy),
+    .t__unified_pld(pe1_t__unified_pld),
+    .t__unified_pld_vld(pe1_t__unified_pld_vld),
     // outputs
-    .t__num_rows_updated_rdy(pe1_t__num_rows_updated_rdy),
+    .t__accumulation_addr(pe1_t__accumulation_addr),
+    .t__accumulation_addr_vld(pe1_t__accumulation_addr_vld),
     .t__payload_type_four(pe1_t__payload_type_four),
     .t__payload_type_four_vld(pe1_t__payload_type_four_vld),
-    .t__payload_type_three_rdy(pe1_t__payload_type_three_rdy),
     .t__stream_id_rdy(pe1_t__stream_id_rdy),
-    .t__vecbuf_bank_addr(pe1_t__vecbuf_bank_addr),
-    .t__vecbuf_bank_addr_vld(pe1_t__vecbuf_bank_addr_vld),
-    .t__vecbuf_bank_din_rdy(pe1_t__vecbuf_bank_din_rdy),
-    .t__vecbuf_bank_dout(pe1_t__vecbuf_bank_dout),
-    .t__vecbuf_bank_dout_vld(pe1_t__vecbuf_bank_dout_vld)
+    .t__unified_pld_rdy(pe1_t__unified_pld_rdy)
   );
 
     logic cpacker_t__payload_type_four__0_rdy;

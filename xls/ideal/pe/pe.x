@@ -78,7 +78,7 @@ pub proc processing_engine<
             )
         }
         else
-        // sync on SOD or EOS, clear in flight write queue, resent bank index
+        // sync on SOD or EOS, clear in flight write queue, reset bank index
         // if EOS send SOD before transition
         if (state.0 == u32: 2){
             let (new_tok, payload_three) = recv(state.5, payload_type_three);

@@ -35,3 +35,20 @@ pub fn push_front<
         (n_queue)
     }(zero!<uN[64][QUEUE_DEPTH]>()))
 }
+
+pub struct StreamAddr {
+    read_or_write: u1,
+    commands: u2,
+    addr: u29,
+    write_pld:  u32,
+    matrix_val: u32,
+    vector_val: u32,
+}
+
+pub struct StreamPayload {
+    commands: u2,
+    addr: u30,
+    matrix_val: u32,
+    vector_val: u32,
+    mem_base: u32 // aka din
+}

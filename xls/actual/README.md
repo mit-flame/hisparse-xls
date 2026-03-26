@@ -7,3 +7,5 @@ The first XLS implementation of hisparse that generated simulation correct veril
 - solved by using a struct to group statically tied data into one send/recv
 - solved using makefile workaround (wasnt that big of a problem to begin with)
 
+as an aside:
+- had to write toplevel verilog file by hand

@@ -26,10 +26,10 @@ async def test_single_cluster(dut):
                     # pe 0 and 1
                     "pe0_t__num_rows_updated",
                     "pe0_t__stream_id",
-                    "pe0_t__vecbuf_bank_din",
+                    "pe0_t__unified_pld",
                     "pe1_t__num_rows_updated",
                     "pe1_t__stream_id",
-                    "pe1_t__vecbuf_bank_din",
+                    "pe1_t__unified_pld",
                     # kmerger
                     "kmerger_t__current_row_partition",
                     "kmerger_t__num_hbm_channels_each_kernel"      
@@ -43,10 +43,10 @@ async def test_single_cluster(dut):
                     "vecbuf0_t__unified_addr",
                     "vecbuf1_t__unified_addr",
                     # pe 0 and 1
-                    "pe0_t__vecbuf_bank_addr",
-                    "pe0_t__vecbuf_bank_dout",
-                    "pe1_t__vecbuf_bank_addr",
-                    "pe1_t__vecbuf_bank_dout",
+                    "pe0_t__unified_addr",
+                    "pe0_t__accumulation_addr",
+                    "pe1_t__unified_addr",
+                    "pe1_t__accumulation_addr",
                     # kmerger
                     "kmerger_t__hbm_vector_addr",
                     "kmerger_t__hbm_vector_payload"
@@ -55,14 +55,18 @@ async def test_single_cluster(dut):
     vlkwargs = {"mem": [0, 1, 2, 3, 4, 5, 6, 7], "latency": 1, "num_streams": 2, "addr_sig": "t__hbm_vector_addr", "pld_sig": "t__hbm_vector_payload"}
     vb0kwargs = {"vecbuf_name": "vecbuf0", "latency": 1, "banksize": 4, "addr_sig": "t__unified_addr", "pld_sig": "t__streaming_pld"}
     vb1kwargs = {"vecbuf_name": "vecbuf1", "latency": 1, "banksize": 4, "addr_sig": "t__unified_addr", "pld_sig": "t__streaming_pld"}
-    pe0kwargs = {"pe_name": "pe0", "latency": 1, "banksize": 4}
-    pe1kwargs = {"pe_name": "pe1", "latency": 1, "banksize": 4}
+    pe0bank = [0]*4
+    pe1bank = [0]*4
+    pe0sendkwargs = {"pe_name": "pe0", "latency": 1, "shared_bank": pe0bank, "addr_sig": "t__unified_addr", "pld_sig": "t__unified_pld"}
+    pe0recvkwargs = {"pe_name": "pe0", "latency": 1, "shared_bank": pe0bank, "addr_sig": "t__accumulation_addr", "pld_sig": "t__dummy_accumulate_pld"} # purely writes for accumulation addr, dummy pld to satisfy driver
+    pe1sendkwargs = {"pe_name": "pe1", "latency": 1, "shared_bank": pe1bank, "addr_sig": "t__unified_addr", "pld_sig": "t__unified_pld"}
+    pe1recvkwargs = {"pe_name": "pe1", "latency": 1, "shared_bank": pe1bank, "addr_sig": "t__accumulation_addr", "pld_sig": "t__dummy_accumulate_pld"} # purely writes for accumulation addr, dummy pld to satisfy driver
     dut.kmerger_t__hbm_vector_addr_rdy.value = 1
     dut.kmerger_t__hbm_vector_payload_rdy.value = 1
     await tester.start(
-        hisparse.matrix_loader_split_driver, hisparse.vector_loader_driver, hisparse.vecbuf_driver, hisparse.vecbuf_driver, hisparse.pe_driver, hisparse.pe_driver,
+        hisparse.matrix_loader_split_driver, hisparse.vector_loader_driver, hisparse.vecbuf_driver, hisparse.vecbuf_driver, hisparse.pe_driver, hisparse.pe_driver, hisparse.pe_driver, hisparse.pe_driver,
         reset=True, 
-        coroutine_kwargs=[mlkwargs, vlkwargs, vb0kwargs, vb1kwargs, pe0kwargs, pe1kwargs]
+        coroutine_kwargs=[mlkwargs, vlkwargs, vb0kwargs, vb1kwargs, pe0sendkwargs, pe0recvkwargs, pe1sendkwargs, pe1recvkwargs]
     )
     for row_part in range(2):
         tester.input_driver.extend([{
@@ -106,7 +110,9 @@ if __name__ == "__main__":
         "__t__vba_addr_arbiter_0_next.sv",
         "__t__vector_loader_0_next.sv",
         "__t__vector_unpacker_0_next.sv",
-        "__t__processing_engine_0_next.sv",
+        "__t__pe_addr_arbiter_0_next.sv",
+        "__t__pe_recv_0_next.sv",
+        "__t__pe_send_0_next.sv",
         "__t__cluster_packer_0_next.sv",
         "__t__clusters_results_merger_0_next.sv",
         "__t__kernels_results_merger_0_next.sv"

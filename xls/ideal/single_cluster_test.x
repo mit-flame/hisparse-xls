@@ -340,22 +340,20 @@ proc Tester {
         trace_fmt!("pe1 req addr WRITE: {:0x}", pe1reqaddr);
         let (tok, pe1update) = recv(tok, cluster_vecbuf_bank_dout[1]);
         let pe1_bank = update(pe1_bank, pe1reqaddr[0+:u30], pe1update);
-        //--
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
-        trace_fmt!("pe0 req addr READ: {:0x}", pe0reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[0], pe0_bank[pe0reqaddr[0+:u30]]);
+        // symmetry stopped
         let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
         trace_fmt!("pe1 req addr READ: {:0x}", pe1reqaddr);
         let tok = send(tok, cluster_vecbuf_bank_din[1], pe1_bank[pe1reqaddr[0+:u30]]);
-
-        // symmetry stopped
+        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        trace_fmt!("pe1 req addr READ: {:0x}", pe1reqaddr);
+        let tok = send(tok, cluster_vecbuf_bank_din[1], pe1_bank[pe1reqaddr[0+:u30]]);
+        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        trace_fmt!("pe0 req addr READ: {:0x}", pe0reqaddr);
+        let tok = send(tok, cluster_vecbuf_bank_din[0], pe0_bank[pe0reqaddr[0+:u30]]);
         let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
         trace_fmt!("pe0 req addr WRITE: {:0x}", pe0reqaddr);
         let (tok, pe0update) = recv(tok, cluster_vecbuf_bank_dout[0]);
         let pe0_bank = update(pe0_bank, pe0reqaddr[0+:u30], pe0update);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
-        trace_fmt!("pe1 req addr READ: {:0x}", pe1reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[1], pe1_bank[pe1reqaddr[0+:u30]]);
         let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
         trace_fmt!("pe0 req addr READ: {:0x}", pe0reqaddr);
         let tok = send(tok, cluster_vecbuf_bank_din[0], pe0_bank[pe0reqaddr[0+:u30]]);

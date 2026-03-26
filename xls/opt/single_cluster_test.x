@@ -13,7 +13,10 @@ import generic_syncer;
 import shuffler_core;
 import arbiter_helper;
 import arbiter;
-import pe;
+import pe_helper;
+import pe_send;
+import pe_recv;
+import pe_addr_arbiter;
 import cluster_packer;
 import clusters_results_merger;
 import kernels_results_merger;
@@ -54,11 +57,11 @@ proc Tester {
     tot_num_partitions:         chan<u32> out;
 
     // running both PEs
-    cluster_vecbuf_bank_addr:               chan<u32>[u32: 2] in;
-    cluster_vecbuf_bank_din:               chan<u32>[u32: 2]  out;
-    cluster_vecbuf_bank_dout:              chan<u32>[u32: 2] in;
-    cluster_num_rows_updated:               chan<u30>[u32: 2] out;      // sampled once every row partition
-    cluster_stream_id:                      chan<u32>[u32: 2] out;
+    pe_num_rows_updated:                    chan<u30>[u32: 2] out;      // sampled once every row partition
+    pe_stream_id:                           chan<u32>[u32: 2] out;      // sampled once every row partition
+    pe_unified_addr:                        chan<pe_helper::StreamAddr>[u32: 2] in;
+    pe_unified_pld:                         chan<pe_helper::StreamPayload>[u32: 2] out;
+    pe_accumulation_addr:                   chan<pe_helper::StreamAddr>[u32: 2] in;
 
     // kernels_results_merger channels
     current_row_partition:                      chan<u32>   out;
@@ -138,14 +141,25 @@ proc Tester {
         );
         spawn arbiter::arbiter_wrapper<u32: 2>(aptti, aivi, aroi, aco);
         // SF to PE (the c stands for cluster)
-        let (cvbao, cvbai) = chan<u32>[u32: 2]("vba");
-        let (cvbdio, cvbdii) = chan<u32>[u32: 2]("cvbdi");
-        let (cvbdoo, cvbdoi) = chan<u32>[u32: 2]("cvbdi");
-        let (cnruo, cnrui) = chan<u30>[u32: 2]("cnru");
-        let (csio, csii) = chan<u32>[u32: 2]("csi");
+        // topmost channels
+        let (pnruo, pnrui) = chan<u30>[u32: 2]("pnru");
+        let (psio, psii) = chan<u32>[u32: 2]("psi");
+        let (pupo, pupi) = chan<pe_helper::StreamPayload>[u32: 2]("pup");
+        let (paao, paai) = chan<pe_helper::StreamAddr>[u32: 2]("paa");
+        // pe_send unique channels
+        let (cao, cai) = chan<pe_helper::StreamAddr>[u32: 2]("ca");
+        let (sao, sai) = chan<pe_helper::StreamAddr>[u32: 2]("sa");
+        let (rao, rai) = chan<pe_helper::StreamAddr>[u32: 2]("ra");
+        // pe_addr_arbiter unique channel (also topmost)
+        let (puao, puai) = chan<pe_helper::StreamAddr>[u32: 2]("pua");
+        // pe_recv unique channels
         let (cpt4o, cpt4i) = chan<uN[64]>[u32: 2]("cpt4");
-        spawn pe::processing_engine<u32: 2, u32: 2, u32: 5>(sf_pt3_in[0], cvbao[0], cvbdii[0], cvbdoo[0], cnrui[0], csii[0], cpt4o[0]);
-        spawn pe::processing_engine<u32: 2, u32: 2, u32: 5>(sf_pt3_in[1], cvbao[1], cvbdii[1], cvbdoo[1], cnrui[1], csii[1], cpt4o[1]);
+        spawn pe_send::pe_send<u32: 2>(pnrui[0], sf_pt3_in[0], cao[0], sao[0], rao[0]);
+        spawn pe_send::pe_send<u32: 2>(pnrui[1], sf_pt3_in[1], cao[1], sao[1], rao[1]);
+        spawn pe_addr_arbiter::pe_addr_arbiter(cai[0], sai[0], rai[0], puao[0]);
+        spawn pe_addr_arbiter::pe_addr_arbiter(cai[1], sai[1], rai[1], puao[1]);
+        spawn pe_recv::pe_recv<u32: 2, u32: 5>(psii[0], pupi[0], paao[0], cpt4o[0]);
+        spawn pe_recv::pe_recv<u32: 2, u32: 5>(psii[1], pupi[1], paao[1], cpt4o[1]);
 
         // PEs to cluster packer (cluster packer vector payload is the acronym)
         // only one cluster but this still must be an array
@@ -173,7 +187,7 @@ proc Tester {
             // for the ML
             ml_unified_addr_in, ml_unified_pld_out, crp_out, mncp_out, tnp_out,
             // for both PEs
-            cvbai, cvbdio, cvbdoi, cnruo, csio,
+            pnruo, psio, puai, pupo, paai,
             // for the kernel results merger
             krpo, nhceko,
             // finally, the output
@@ -220,31 +234,27 @@ proc Tester {
         let tok4 = send(join(), num_matrix_cols, u32: 8);
         let tok5 = send(join(), vau_num_col_partitions[0], u32: 2); // notice its the same as ML
         let tok6 = send(join(), vau_num_col_partitions[1], u32: 2); // notice its the same as ML
-        let tok7 = for (idx, tok):(u32, token) in u32:0..u32:2{send(tok, cluster_num_rows_updated[idx], u30: 2)}(join());
-        let tok8 = for (idx, tok):(u32, token) in u32:0..u32:2{send(tok, cluster_stream_id[idx], idx)}(join());
+        let tok7 = for (idx, tok):(u32, token) in u32:0..u32:2{send(tok, pe_num_rows_updated[idx], u30: 2)}(join());
+        let tok8 = for (idx, tok):(u32, token) in u32:0..u32:2{send(tok, pe_stream_id[idx], idx)}(join());
         let tok9 = send(join(), current_row_partition, u32: 0);
         let tok10 = send(join(), num_hbm_channels_each_kernel, [u32: 1]);
 
         trace_fmt!("sending row info");
         let tok = join(tok1, tok2, tok3, tok4, tok5, tok6, tok7, tok8, tok9, tok10);
-
+        
         // every row involves clearing of PE banks
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
         trace_fmt!("pe0 req addr: {:0x}", pe0reqaddr);
-        let (tok, pe0update) = recv(tok, cluster_vecbuf_bank_dout[0]);
-        let pe0_bank = update(pe0_bank, pe0reqaddr[0+:u30], pe0update);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let pe0_bank = update(pe0_bank, pe0reqaddr.addr, pe0reqaddr.write_pld);
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
         trace_fmt!("pe1 req addr: {:0x}", pe1reqaddr);
-        let (tok, pe1update) = recv(tok, cluster_vecbuf_bank_dout[1]);
-        let pe1_bank = update(pe1_bank, pe1reqaddr[0+:u30], pe1update);
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let pe1_bank = update(pe1_bank, pe1reqaddr.addr, pe1reqaddr.write_pld);
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
         trace_fmt!("pe0 req addr: {:0x}", pe0reqaddr);
-        let (tok, pe0update) = recv(tok, cluster_vecbuf_bank_dout[0]);
-        let pe0_bank = update(pe0_bank, pe0reqaddr[0+:u30], pe0update);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let pe0_bank = update(pe0_bank, pe0reqaddr.addr, pe0reqaddr.write_pld);
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
         trace_fmt!("pe1 req addr: {:0x}", pe1reqaddr);
-        let (tok, pe1update) = recv(tok, cluster_vecbuf_bank_dout[1]);
-        let pe1_bank = update(pe1_bank, pe1reqaddr[0+:u30], pe1update);
+        let pe1_bank = update(pe1_bank, pe1reqaddr.addr, pe1reqaddr.write_pld);
 
         // PART 1------------------------------------------------------
         // VL/VAU partition loading
@@ -387,67 +397,76 @@ proc Tester {
         // PART 2------------------------------------------------------
         // row change stuff:
         // finally unblocking the PEs and sampling the output (this is done on a per row/EOS basis)
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
         trace_fmt!("pe0 req addr READ: {:0x}", pe0reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[0], pe0_bank[pe0reqaddr[0+:u30]]);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let tok = send(tok, pe_unified_pld[0], pe_helper::StreamPayload{mem_base: pe0_bank[pe0reqaddr.addr], matrix_val: pe0reqaddr.matrix_val, vector_val: pe0reqaddr.vector_val, addr: pe0reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
         trace_fmt!("pe1 req addr READ: {:0x}", pe1reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[1], pe1_bank[pe1reqaddr[0+:u30]]);
+        let tok = send(tok, pe_unified_pld[1], pe_helper::StreamPayload{mem_base: pe1_bank[pe1reqaddr.addr], matrix_val: pe1reqaddr.matrix_val, vector_val: pe1reqaddr.vector_val, addr: pe1reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
         //
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let (tok, pe0reqaddr) = recv(tok, pe_accumulation_addr[0]);
         trace_fmt!("pe0 req addr WRITE: {:0x}", pe0reqaddr);
-        let (tok, pe0update) = recv(tok, cluster_vecbuf_bank_dout[0]);
-        let pe0_bank = update(pe0_bank, pe0reqaddr[0+:u30], pe0update);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let pe0_bank = update(pe0_bank, pe0reqaddr.addr, pe0reqaddr.write_pld);
+        let (tok, pe1reqaddr) = recv(tok, pe_accumulation_addr[1]);
         trace_fmt!("pe1 req addr WRITE: {:0x}", pe1reqaddr);
-        let (tok, pe1update) = recv(tok, cluster_vecbuf_bank_dout[1]);
-        let pe1_bank = update(pe1_bank, pe1reqaddr[0+:u30], pe1update);
+        let pe1_bank = update(pe1_bank, pe1reqaddr.addr, pe1reqaddr.write_pld);
         //--
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
         trace_fmt!("pe0 req addr READ: {:0x}", pe0reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[0], pe0_bank[pe0reqaddr[0+:u30]]);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let tok = send(tok, pe_unified_pld[0], pe_helper::StreamPayload{mem_base: pe0_bank[pe0reqaddr.addr], matrix_val: pe0reqaddr.matrix_val, vector_val: pe0reqaddr.vector_val, addr: pe0reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
         trace_fmt!("pe1 req addr READ: {:0x}", pe1reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[1], pe1_bank[pe1reqaddr[0+:u30]]);
+        let tok = send(tok, pe_unified_pld[1], pe_helper::StreamPayload{mem_base: pe1_bank[pe1reqaddr.addr], matrix_val: pe1reqaddr.matrix_val, vector_val: pe1reqaddr.vector_val, addr: pe1reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
         //
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let (tok, pe0reqaddr) = recv(tok, pe_accumulation_addr[0]);
         trace_fmt!("pe0 req addr WRITE: {:0x}", pe0reqaddr);
-        let (tok, pe0update) = recv(tok, cluster_vecbuf_bank_dout[0]);
-        let pe0_bank = update(pe0_bank, pe0reqaddr[0+:u30], pe0update);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let pe0_bank = update(pe0_bank, pe0reqaddr.addr, pe0reqaddr.write_pld);
+        let (tok, pe1reqaddr) = recv(tok, pe_accumulation_addr[1]);
         trace_fmt!("pe1 req addr WRITE: {:0x}", pe1reqaddr);
-        let (tok, pe1update) = recv(tok, cluster_vecbuf_bank_dout[1]);
-        let pe1_bank = update(pe1_bank, pe1reqaddr[0+:u30], pe1update);
-        //--
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
-        trace_fmt!("pe0 req addr READ: {:0x}", pe0reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[0], pe0_bank[pe0reqaddr[0+:u30]]);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]); // <--- stuck here rn
-        trace_fmt!("pe1 req addr READ: {:0x}", pe1reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[1], pe1_bank[pe1reqaddr[0+:u30]]);
-
+        let pe1_bank = update(pe1_bank, pe1reqaddr.addr, pe1reqaddr.write_pld);
         // symmetry stopped
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
-        trace_fmt!("pe0 req addr WRITE: {:0x}", pe0reqaddr);
-        let (tok, pe0update) = recv(tok, cluster_vecbuf_bank_dout[0]);
-        let pe0_bank = update(pe0_bank, pe0reqaddr[0+:u30], pe0update);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
+        trace_fmt!("pe1 req addr SOD: {:0x}", pe1reqaddr);
+        let tok = send(tok, pe_unified_pld[1], pe_helper::StreamPayload{mem_base: pe1_bank[pe1reqaddr.addr], matrix_val: pe1reqaddr.matrix_val, vector_val: pe1reqaddr.vector_val, addr: pe1reqaddr.addr as u30, commands: pe1reqaddr.commands});
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
         trace_fmt!("pe1 req addr READ: {:0x}", pe1reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[1], pe1_bank[pe1reqaddr[0+:u30]]);
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let tok = send(tok, pe_unified_pld[1], pe_helper::StreamPayload{mem_base: pe1_bank[pe1reqaddr.addr], matrix_val: pe1reqaddr.matrix_val, vector_val: pe1reqaddr.vector_val, addr: pe1reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
+        trace_fmt!("pe1 req addr READ: {:0x}", pe1reqaddr);
+        let tok = send(tok, pe_unified_pld[1], pe_helper::StreamPayload{mem_base: pe1_bank[pe1reqaddr.addr], matrix_val: pe1reqaddr.matrix_val, vector_val: pe1reqaddr.vector_val, addr: pe1reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
+        trace_fmt!("pe1 req addr EOD: {:0x}", pe1reqaddr);
+        let tok = send(tok, pe_unified_pld[1], pe_helper::StreamPayload{mem_base: pe1_bank[pe1reqaddr.addr], matrix_val: pe1reqaddr.matrix_val, vector_val: pe1reqaddr.vector_val, addr: pe1reqaddr.addr as u30, commands: pe1reqaddr.commands});
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
+        trace_fmt!("pe1 req addr EOS: {:0x}", pe1reqaddr);
+        let tok = send(tok, pe_unified_pld[1], pe_helper::StreamPayload{mem_base: pe1_bank[pe1reqaddr.addr], matrix_val: pe1reqaddr.matrix_val, vector_val: pe1reqaddr.vector_val, addr: pe1reqaddr.addr as u30, commands: pe1reqaddr.commands});
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
         trace_fmt!("pe0 req addr READ: {:0x}", pe0reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[0], pe0_bank[pe0reqaddr[0+:u30]]);
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let tok = send(tok, pe_unified_pld[0], pe_helper::StreamPayload{mem_base: pe0_bank[pe0reqaddr.addr], matrix_val: pe0reqaddr.matrix_val, vector_val: pe0reqaddr.vector_val, addr: pe0reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
+        let (tok, pe0reqaddr) = recv(tok, pe_accumulation_addr[0]);
         trace_fmt!("pe0 req addr WRITE: {:0x}", pe0reqaddr);
-        let (tok, pe0update) = recv(tok, cluster_vecbuf_bank_dout[0]);
-        let pe0_bank = update(pe0_bank, pe0reqaddr[0+:u30], pe0update);
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let pe0_bank = update(pe0_bank, pe0reqaddr.addr, pe0reqaddr.write_pld);
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
         trace_fmt!("pe0 req addr READ: {:0x}", pe0reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[0], pe0_bank[pe0reqaddr[0+:u30]]);
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let tok = send(tok, pe_unified_pld[0], pe_helper::StreamPayload{mem_base: pe0_bank[pe0reqaddr.addr], matrix_val: pe0reqaddr.matrix_val, vector_val: pe0reqaddr.vector_val, addr: pe0reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
+        let (tok, pe0reqaddr) = recv(tok, pe_accumulation_addr[0]);
+        trace_fmt!("pe0 req addr WRITE: {:0x}", pe0reqaddr);
+        let pe0_bank = update(pe0_bank, pe0reqaddr.addr, pe0reqaddr.write_pld);
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
+        trace_fmt!("pe0 req addr SOD: {:0x}", pe0reqaddr);
+        let tok = send(tok, pe_unified_pld[0], pe_helper::StreamPayload{mem_base: pe0_bank[pe0reqaddr.addr], matrix_val: pe0reqaddr.matrix_val, vector_val: pe0reqaddr.vector_val, addr: pe0reqaddr.addr as u30, commands: pe0reqaddr.commands});
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
         trace_fmt!("pe0 req addr READ: {:0x}", pe0reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[0], pe0_bank[pe0reqaddr[0+:u30]]);
-        
+        let tok = send(tok, pe_unified_pld[0], pe_helper::StreamPayload{mem_base: pe0_bank[pe0reqaddr.addr], matrix_val: pe0reqaddr.matrix_val, vector_val: pe0reqaddr.vector_val, addr: pe0reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
+        trace_fmt!("pe0 req addr READ: {:0x}", pe0reqaddr);
+        let tok = send(tok, pe_unified_pld[0], pe_helper::StreamPayload{mem_base: pe0_bank[pe0reqaddr.addr], matrix_val: pe0reqaddr.matrix_val, vector_val: pe0reqaddr.vector_val, addr: pe0reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});        
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
+        trace_fmt!("pe0 req addr EOD: {:0x}", pe0reqaddr);
+        let tok = send(tok, pe_unified_pld[0], pe_helper::StreamPayload{mem_base: pe0_bank[pe0reqaddr.addr], matrix_val: pe0reqaddr.matrix_val, vector_val: pe0reqaddr.vector_val, addr: pe0reqaddr.addr as u30, commands: pe0reqaddr.commands});
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
+        trace_fmt!("pe0 req addr EOS: {:0x}", pe0reqaddr);
+        let tok = send(tok, pe_unified_pld[0], pe_helper::StreamPayload{mem_base: pe0_bank[pe0reqaddr.addr], matrix_val: pe0reqaddr.matrix_val, vector_val: pe0reqaddr.vector_val, addr: pe0reqaddr.addr as u30, commands: pe0reqaddr.commands});
         // finally read the results
         let (tok, output_addr) = recv(tok, output_buffer_hbm_vector_addr);
         trace_fmt!("requested write out addr: {:0x}", output_addr);
@@ -466,29 +485,25 @@ proc Tester {
         let tok4 = send(join(), num_matrix_cols, u32: 8);
         let tok5 = send(join(), vau_num_col_partitions[0], u32: 2);
         let tok6 = send(join(), vau_num_col_partitions[1], u32: 2);
-        let tok7 = for (idx, tok):(u32, token) in u32:0..u32:2{send(tok, cluster_num_rows_updated[idx], u30: 2)}(join());
-        let tok8 = for (idx, tok):(u32, token) in u32:0..u32:2{send(tok, cluster_stream_id[idx], idx)}(join());
+        let tok7 = for (idx, tok):(u32, token) in u32:0..u32:2{send(tok, pe_num_rows_updated[idx], u30: 2)}(join());
+        let tok8 = for (idx, tok):(u32, token) in u32:0..u32:2{send(tok, pe_stream_id[idx], idx)}(join());
         let tok9 = send(join(), current_row_partition, u32: 1);
         let tok10 = send(join(), num_hbm_channels_each_kernel, [u32: 1]);
         trace_fmt!("sending row info");
         let tok = join(tok1, tok2, tok3, tok4, tok5, tok6, tok7, tok8, tok9, tok10);
         // every row involves clearing of PE banks
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
         trace_fmt!("pe0 req addr: {:0x}", pe0reqaddr);
-        let (tok, pe0update) = recv(tok, cluster_vecbuf_bank_dout[0]);
-        let pe0_bank = update(pe0_bank, pe0reqaddr[0+:u30], pe0update);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let pe0_bank = update(pe0_bank, pe0reqaddr.addr, pe0reqaddr.write_pld);
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
         trace_fmt!("pe1 req addr: {:0x}", pe1reqaddr);
-        let (tok, pe1update) = recv(tok, cluster_vecbuf_bank_dout[1]);
-        let pe1_bank = update(pe1_bank, pe1reqaddr[0+:u30], pe1update);
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let pe1_bank = update(pe1_bank, pe1reqaddr.addr, pe1reqaddr.write_pld);
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
         trace_fmt!("pe0 req addr: {:0x}", pe0reqaddr);
-        let (tok, pe0update) = recv(tok, cluster_vecbuf_bank_dout[0]);
-        let pe0_bank = update(pe0_bank, pe0reqaddr[0+:u30], pe0update);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let pe0_bank = update(pe0_bank, pe0reqaddr.addr, pe0reqaddr.write_pld);
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
         trace_fmt!("pe1 req addr: {:0x}", pe1reqaddr);
-        let (tok, pe1update) = recv(tok, cluster_vecbuf_bank_dout[1]);
-        let pe1_bank = update(pe1_bank, pe1reqaddr[0+:u30], pe1update);
+        let pe1_bank = update(pe1_bank, pe1reqaddr.addr, pe1reqaddr.write_pld);
 
         // PART 3------------------------------------------------------
         let (tok, addr) = recv(tok, hbm_vector_addr);
@@ -625,115 +640,120 @@ proc Tester {
         send(tok, vba_streaming_pld[0], vector_helper::StreamPayload{commands: cmd_addr_one.commands, ..zero!<vector_helper::StreamPayload>()});
         send(tok, vba_streaming_pld[1], vector_helper::StreamPayload{commands: cmd_addr_two.commands, ..zero!<vector_helper::StreamPayload>()});
         // PART 4------------------------------------------------------
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
         trace_fmt!("pe0 req addr READ: {:0x}", pe0reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[0], pe0_bank[pe0reqaddr[0+:u30]]);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let tok = send(tok, pe_unified_pld[0], pe_helper::StreamPayload{mem_base: pe0_bank[pe0reqaddr.addr], matrix_val: pe0reqaddr.matrix_val, vector_val: pe0reqaddr.vector_val, addr: pe0reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
         trace_fmt!("pe1 req addr READ: {:0x}", pe1reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[1], pe1_bank[pe1reqaddr[0+:u30]]);
+        let tok = send(tok, pe_unified_pld[1], pe_helper::StreamPayload{mem_base: pe1_bank[pe1reqaddr.addr], matrix_val: pe1reqaddr.matrix_val, vector_val: pe1reqaddr.vector_val, addr: pe1reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
         //
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let (tok, pe0reqaddr) = recv(tok, pe_accumulation_addr[0]);
         trace_fmt!("pe0 req addr WRITE: {:0x}", pe0reqaddr);
-        let (tok, pe0update) = recv(tok, cluster_vecbuf_bank_dout[0]);
-        let pe0_bank = update(pe0_bank, pe0reqaddr[0+:u30], pe0update);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let pe0_bank = update(pe0_bank, pe0reqaddr.addr, pe0reqaddr.write_pld);
+        let (tok, pe1reqaddr) = recv(tok, pe_accumulation_addr[1]);
         trace_fmt!("pe1 req addr WRITE: {:0x}", pe1reqaddr);
-        let (tok, pe1update) = recv(tok, cluster_vecbuf_bank_dout[1]);
-        let pe1_bank = update(pe1_bank, pe1reqaddr[0+:u30], pe1update);
+        let pe1_bank = update(pe1_bank, pe1reqaddr.addr, pe1reqaddr.write_pld);
         //--
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
         trace_fmt!("pe0 req addr READ: {:0x}", pe0reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[0], pe0_bank[pe0reqaddr[0+:u30]]);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let tok = send(tok, pe_unified_pld[0], pe_helper::StreamPayload{mem_base: pe0_bank[pe0reqaddr.addr], matrix_val: pe0reqaddr.matrix_val, vector_val: pe0reqaddr.vector_val, addr: pe0reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
         trace_fmt!("pe1 req addr READ: {:0x}", pe1reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[1], pe1_bank[pe1reqaddr[0+:u30]]);
+        let tok = send(tok, pe_unified_pld[1], pe_helper::StreamPayload{mem_base: pe1_bank[pe1reqaddr.addr], matrix_val: pe1reqaddr.matrix_val, vector_val: pe1reqaddr.vector_val, addr: pe1reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
         //
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let (tok, pe0reqaddr) = recv(tok, pe_accumulation_addr[0]);
         trace_fmt!("pe0 req addr WRITE: {:0x}", pe0reqaddr);
-        let (tok, pe0update) = recv(tok, cluster_vecbuf_bank_dout[0]);
-        let pe0_bank = update(pe0_bank, pe0reqaddr[0+:u30], pe0update);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let pe0_bank = update(pe0_bank, pe0reqaddr.addr, pe0reqaddr.write_pld);
+        let (tok, pe1reqaddr) = recv(tok, pe_accumulation_addr[1]);
         trace_fmt!("pe1 req addr WRITE: {:0x}", pe1reqaddr);
-        let (tok, pe1update) = recv(tok, cluster_vecbuf_bank_dout[1]);
-        let pe1_bank = update(pe1_bank, pe1reqaddr[0+:u30], pe1update);
+        let pe1_bank = update(pe1_bank, pe1reqaddr.addr, pe1reqaddr.write_pld);
         //--
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
         trace_fmt!("pe0 req addr READ: {:0x}", pe0reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[0], pe0_bank[pe0reqaddr[0+:u30]]);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let tok = send(tok, pe_unified_pld[0], pe_helper::StreamPayload{mem_base: pe0_bank[pe0reqaddr.addr], matrix_val: pe0reqaddr.matrix_val, vector_val: pe0reqaddr.vector_val, addr: pe0reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
         trace_fmt!("pe1 req addr READ: {:0x}", pe1reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[1], pe1_bank[pe1reqaddr[0+:u30]]);
+        let tok = send(tok, pe_unified_pld[1], pe_helper::StreamPayload{mem_base: pe1_bank[pe1reqaddr.addr], matrix_val: pe1reqaddr.matrix_val, vector_val: pe1reqaddr.vector_val, addr: pe1reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
         //
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let (tok, pe0reqaddr) = recv(tok, pe_accumulation_addr[0]);
         trace_fmt!("pe0 req addr WRITE: {:0x}", pe0reqaddr);
-        let (tok, pe0update) = recv(tok, cluster_vecbuf_bank_dout[0]);
-        let pe0_bank = update(pe0_bank, pe0reqaddr[0+:u30], pe0update);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let pe0_bank = update(pe0_bank, pe0reqaddr.addr, pe0reqaddr.write_pld);
+        let (tok, pe1reqaddr) = recv(tok, pe_accumulation_addr[1]);
         trace_fmt!("pe1 req addr WRITE: {:0x}", pe1reqaddr);
-        let (tok, pe1update) = recv(tok, cluster_vecbuf_bank_dout[1]);
-        let pe1_bank = update(pe1_bank, pe1reqaddr[0+:u30], pe1update);
+        let pe1_bank = update(pe1_bank, pe1reqaddr.addr, pe1reqaddr.write_pld);
         //--
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
         trace_fmt!("pe0 req addr READ: {:0x}", pe0reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[0], pe0_bank[pe0reqaddr[0+:u30]]);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let tok = send(tok, pe_unified_pld[0], pe_helper::StreamPayload{mem_base: pe0_bank[pe0reqaddr.addr], matrix_val: pe0reqaddr.matrix_val, vector_val: pe0reqaddr.vector_val, addr: pe0reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
         trace_fmt!("pe1 req addr READ: {:0x}", pe1reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[1], pe1_bank[pe1reqaddr[0+:u30]]);
+        let tok = send(tok, pe_unified_pld[1], pe_helper::StreamPayload{mem_base: pe1_bank[pe1reqaddr.addr], matrix_val: pe1reqaddr.matrix_val, vector_val: pe1reqaddr.vector_val, addr: pe1reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
         //
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let (tok, pe0reqaddr) = recv(tok, pe_accumulation_addr[0]);
         trace_fmt!("pe0 req addr WRITE: {:0x}", pe0reqaddr);
-        let (tok, pe0update) = recv(tok, cluster_vecbuf_bank_dout[0]);
-        let pe0_bank = update(pe0_bank, pe0reqaddr[0+:u30], pe0update);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let pe0_bank = update(pe0_bank, pe0reqaddr.addr, pe0reqaddr.write_pld);
+        let (tok, pe1reqaddr) = recv(tok, pe_accumulation_addr[1]);
         trace_fmt!("pe1 req addr WRITE: {:0x}", pe1reqaddr);
-        let (tok, pe1update) = recv(tok, cluster_vecbuf_bank_dout[1]);
-        let pe1_bank = update(pe1_bank, pe1reqaddr[0+:u30], pe1update);
+        let pe1_bank = update(pe1_bank, pe1reqaddr.addr, pe1reqaddr.write_pld);
         //--
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
         trace_fmt!("pe0 req addr READ: {:0x}", pe0reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[0], pe0_bank[pe0reqaddr[0+:u30]]);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let tok = send(tok, pe_unified_pld[0], pe_helper::StreamPayload{mem_base: pe0_bank[pe0reqaddr.addr], matrix_val: pe0reqaddr.matrix_val, vector_val: pe0reqaddr.vector_val, addr: pe0reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
         trace_fmt!("pe1 req addr READ: {:0x}", pe1reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[1], pe1_bank[pe1reqaddr[0+:u30]]);
+        let tok = send(tok, pe_unified_pld[1], pe_helper::StreamPayload{mem_base: pe1_bank[pe1reqaddr.addr], matrix_val: pe1reqaddr.matrix_val, vector_val: pe1reqaddr.vector_val, addr: pe1reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
         //
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let (tok, pe0reqaddr) = recv(tok, pe_accumulation_addr[0]);
         trace_fmt!("pe0 req addr WRITE: {:0x}", pe0reqaddr);
-        let (tok, pe0update) = recv(tok, cluster_vecbuf_bank_dout[0]);
-        let pe0_bank = update(pe0_bank, pe0reqaddr[0+:u30], pe0update);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let pe0_bank = update(pe0_bank, pe0reqaddr.addr, pe0reqaddr.write_pld);
+        let (tok, pe1reqaddr) = recv(tok, pe_accumulation_addr[1]);
         trace_fmt!("pe1 req addr WRITE: {:0x}", pe1reqaddr);
-        let (tok, pe1update) = recv(tok, cluster_vecbuf_bank_dout[1]);
-        let pe1_bank = update(pe1_bank, pe1reqaddr[0+:u30], pe1update);
+        let pe1_bank = update(pe1_bank, pe1reqaddr.addr, pe1reqaddr.write_pld);
         //--
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
         trace_fmt!("pe0 req addr READ: {:0x}", pe0reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[0], pe0_bank[pe0reqaddr[0+:u30]]);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let tok = send(tok, pe_unified_pld[0], pe_helper::StreamPayload{mem_base: pe0_bank[pe0reqaddr.addr], matrix_val: pe0reqaddr.matrix_val, vector_val: pe0reqaddr.vector_val, addr: pe0reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
         trace_fmt!("pe1 req addr READ: {:0x}", pe1reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[1], pe1_bank[pe1reqaddr[0+:u30]]);
+        let tok = send(tok, pe_unified_pld[1], pe_helper::StreamPayload{mem_base: pe1_bank[pe1reqaddr.addr], matrix_val: pe1reqaddr.matrix_val, vector_val: pe1reqaddr.vector_val, addr: pe1reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
         //
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let (tok, pe0reqaddr) = recv(tok, pe_accumulation_addr[0]);
         trace_fmt!("pe0 req addr WRITE: {:0x}", pe0reqaddr);
-        let (tok, pe0update) = recv(tok, cluster_vecbuf_bank_dout[0]);
-        let pe0_bank = update(pe0_bank, pe0reqaddr[0+:u30], pe0update);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let pe0_bank = update(pe0_bank, pe0reqaddr.addr, pe0reqaddr.write_pld);
+        let (tok, pe1reqaddr) = recv(tok, pe_accumulation_addr[1]);
         trace_fmt!("pe1 req addr WRITE: {:0x}", pe1reqaddr);
-        let (tok, pe1update) = recv(tok, cluster_vecbuf_bank_dout[1]);
-        let pe1_bank = update(pe1_bank, pe1reqaddr[0+:u30], pe1update);
+        let pe1_bank = update(pe1_bank, pe1reqaddr.addr, pe1reqaddr.write_pld);
         //--
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
+        trace_fmt!("pe0 req addr SOD: {:0x}", pe0reqaddr);
+        let tok = send(tok, pe_unified_pld[0], pe_helper::StreamPayload{mem_base: pe0_bank[pe0reqaddr.addr], matrix_val: pe0reqaddr.matrix_val, vector_val: pe0reqaddr.vector_val, addr: pe0reqaddr.addr as u30, commands: pe0reqaddr.commands});
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
         trace_fmt!("pe0 req addr READ: {:0x}", pe0reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[0], pe0_bank[pe0reqaddr[0+:u30]]);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
-        trace_fmt!("pe1 req addr READ: {:0x}", pe1reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[1], pe1_bank[pe1reqaddr[0+:u30]]);
-        let (tok, pe0reqaddr) = recv(tok, cluster_vecbuf_bank_addr[0]);
+        let tok = send(tok, pe_unified_pld[0], pe_helper::StreamPayload{mem_base: pe0_bank[pe0reqaddr.addr], matrix_val: pe0reqaddr.matrix_val, vector_val: pe0reqaddr.vector_val, addr: pe0reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
         trace_fmt!("pe0 req addr READ: {:0x}", pe0reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[0], pe0_bank[pe0reqaddr[0+:u30]]);
-        let (tok, pe1reqaddr) = recv(tok, cluster_vecbuf_bank_addr[1]);
+        let tok = send(tok, pe_unified_pld[0], pe_helper::StreamPayload{mem_base: pe0_bank[pe0reqaddr.addr], matrix_val: pe0reqaddr.matrix_val, vector_val: pe0reqaddr.vector_val, addr: pe0reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});        
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
+        trace_fmt!("pe0 req addr EOD: {:0x}", pe0reqaddr);
+        let tok = send(tok, pe_unified_pld[0], pe_helper::StreamPayload{mem_base: pe0_bank[pe0reqaddr.addr], matrix_val: pe0reqaddr.matrix_val, vector_val: pe0reqaddr.vector_val, addr: pe0reqaddr.addr as u30, commands: pe0reqaddr.commands});
+        let (tok, pe0reqaddr) = recv(tok, pe_unified_addr[0]);
+        trace_fmt!("pe0 req addr EOS: {:0x}", pe0reqaddr);
+        let tok = send(tok, pe_unified_pld[0], pe_helper::StreamPayload{mem_base: pe0_bank[pe0reqaddr.addr], matrix_val: pe0reqaddr.matrix_val, vector_val: pe0reqaddr.vector_val, addr: pe0reqaddr.addr as u30, commands: pe0reqaddr.commands});
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
+        trace_fmt!("pe1 req addr SOD: {:0x}", pe1reqaddr);
+        let tok = send(tok, pe_unified_pld[1], pe_helper::StreamPayload{mem_base: pe1_bank[pe1reqaddr.addr], matrix_val: pe1reqaddr.matrix_val, vector_val: pe1reqaddr.vector_val, addr: pe1reqaddr.addr as u30, commands: pe1reqaddr.commands});
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
         trace_fmt!("pe1 req addr READ: {:0x}", pe1reqaddr);
-        let tok = send(tok, cluster_vecbuf_bank_din[1], pe1_bank[pe1reqaddr[0+:u30]]);
-
+        let tok = send(tok, pe_unified_pld[1], pe_helper::StreamPayload{mem_base: pe1_bank[pe1reqaddr.addr], matrix_val: pe1reqaddr.matrix_val, vector_val: pe1reqaddr.vector_val, addr: pe1reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
+        trace_fmt!("pe1 req addr READ: {:0x}", pe1reqaddr);
+        let tok = send(tok, pe_unified_pld[1], pe_helper::StreamPayload{mem_base: pe1_bank[pe1reqaddr.addr], matrix_val: pe1reqaddr.matrix_val, vector_val: pe1reqaddr.vector_val, addr: pe1reqaddr.addr as u30, ..zero!<pe_helper::StreamPayload>()});
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
+        trace_fmt!("pe1 req addr EOD: {:0x}", pe1reqaddr);
+        let tok = send(tok, pe_unified_pld[1], pe_helper::StreamPayload{mem_base: pe1_bank[pe1reqaddr.addr], matrix_val: pe1reqaddr.matrix_val, vector_val: pe1reqaddr.vector_val, addr: pe1reqaddr.addr as u30, commands: pe1reqaddr.commands});
+        let (tok, pe1reqaddr) = recv(tok, pe_unified_addr[1]);
+        trace_fmt!("pe1 req addr EOS: {:0x}", pe1reqaddr);
+        let tok = send(tok, pe_unified_pld[1], pe_helper::StreamPayload{mem_base: pe1_bank[pe1reqaddr.addr], matrix_val: pe1reqaddr.matrix_val, vector_val: pe1reqaddr.vector_val, addr: pe1reqaddr.addr as u30, commands: pe1reqaddr.commands});
         let (tok, output_addr) = recv(tok, output_buffer_hbm_vector_addr);
         trace_fmt!("requested write out addr: {:0x}", output_addr);
         let (tok, output_pld) = recv(tok, output_buffer_hbm_vector_payload);

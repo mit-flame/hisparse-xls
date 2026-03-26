@@ -17,6 +17,11 @@ The idea here is to put each independently advancing blocking frontier in its ow
 - Split original vector buffer acess unit into a vba_send and vba_recv
 - pipelined key information alongside memory requests to avoid communication between vba_send and vba_recv
 
+3) Processing Engine:
+- Split original processing engine into pe_send and pe_recv
+- Unrelated to memory port multiplexing below, also made memory dual port (original Hisparse arch made same assumption and it makes sense given the Read After Write considerations in the original paper)
+- pipelined key information alongside memory requests in the same way the vector buffer access unit did
+
 ## Memory Port Multiplexing
 XLS at this moment cannot codegen procs that make multiple IO operations *on the same channel* in a given activation. As mentioned in the "actual" implementation, this limitation was solved by conditioning the firing of an IO operation on a channel using states. However, this approach naturally leads to a higher II than desired. To mitigate this issue without making exceedingly complicated state machines, I decided to make multiple channels that refer to the same memory port, and create arbiters in XLS that merge these multiple channel references. As long as only one channel has valid data at a given moment (which is always true in my use case), this merging is correct and allows the external memory to be modeled with a single port. This technique led to the following changes in the code:
 
@@ -28,7 +33,10 @@ XLS at this moment cannot codegen procs that make multiple IO operations *on the
 - The vector buffer access units bank address channel was split into a loading_addr and streaming_addr channel. Now loading requests can be split from the streaming requests.
 - an arbiter was created for only the address sending channels (since loading_addr only wrote to the memory, never read from it)
 
-## Other Architecture Changes
+3) Processing Engine:
+- Using the processing engine as a way to stress test this idea even more, I made three addresses: clearing_addr, streaming_addr and result_addr. All are mutually exclusive, thus the arbiter connected all of them to a unified addr which sent unified plds to the pe_recv unit.
+
+# Other Architecture Changes
 These changes just made it easier to optimize HiSparse in XLS
 
 1) Separation of Token Syncing from Main Proc Logic:
@@ -43,3 +51,5 @@ Minor changes
 
 (as an aside) debugging methods
 - trace_fmt! a signal to figure out the wire name after codegen
+
+Finally, this could be optimized further by making the prologue and epiloge faster, however, I focused on streaming as that is 99% of the time taken in this architecture. It is very likely that these techniques could speed up the prologue and epiloge as well.
