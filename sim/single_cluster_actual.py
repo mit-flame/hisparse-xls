@@ -4,7 +4,7 @@ import cocotb
 from cocotb.triggers import RisingEdge
 
 from lib.xlstools import ProcTester, runner
-from lib import hisparse
+from lib import hisparse_old
 
 @cocotb.test()
 async def test_single_cluster(dut):
@@ -53,8 +53,8 @@ async def test_single_cluster(dut):
                     "kmerger_t__hbm_vector_addr",
                     "kmerger_t__hbm_vector_payload"
                     ])
-    mlkwargs = {"hbm_chan": 0, "matrix_fp": "/home/ayana/hisparse-xls/data/spmv1.json", "latency": 1, "num_streams": 2, "addr_sig": "t__payload_type_one_index", "pld_sig": "t__payload_type_one"}
-    vlkwargs = {"mem": [0, 1, 2, 3, 4, 5, 6, 7], "latency": 1, "num_streams": 2, "addr_sig": "t__hbm_vector_addr", "pld_sig": "t__hbm_vector_payload"}
+    mlkwargs = {"hbm_chan": 0, "matrix_fp": "/home/ayana/hisparse-xls/data/spmv1.json", "latency": 1, "num_streams": 2}
+    vlkwargs = {"mem": [0, 1, 2, 3, 4, 5, 6, 7], "latency": 1, "num_streams": 2}
     vb0kwargs = {"vecbuf_name": "vecbuf0", "latency": 1, "banksize": 4}
     vb1kwargs = {"vecbuf_name": "vecbuf1", "latency": 1, "banksize": 4}
     pe0kwargs = {"pe_name": "pe0", "latency": 1, "banksize": 4}
@@ -62,7 +62,7 @@ async def test_single_cluster(dut):
     dut.kmerger_t__hbm_vector_addr_rdy.value = 1
     dut.kmerger_t__hbm_vector_payload_rdy.value = 1
     await tester.start(
-        hisparse.matrix_loader_regular_driver, hisparse.vector_loader_driver, hisparse.vecbuf_driver, hisparse.vecbuf_driver, hisparse.pe_driver, hisparse.pe_driver,
+        hisparse_old.matrix_loader_driver, hisparse_old.vector_loader_driver, hisparse_old.vecbuf_driver, hisparse_old.vecbuf_driver, hisparse_old.pe_driver, hisparse_old.pe_driver,
         reset=True, 
         coroutine_kwargs=[mlkwargs, vlkwargs, vb0kwargs, vb1kwargs, pe0kwargs, pe1kwargs]
     )
