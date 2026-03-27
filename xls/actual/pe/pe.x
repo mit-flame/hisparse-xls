@@ -1,6 +1,6 @@
 import pe_helper;
 
-pub proc processing_engine<NUM_STREAMS: u32, BANK_SIZE: u32, QUEUE_DEPTH: u32>
+pub proc processing_engine<NUM_STREAMS: u32, QUEUE_DEPTH: u32>
 {
     payload_type_three:             chan<uN[96]>  in;
     vecbuf_bank_addr:               chan<u32> out;

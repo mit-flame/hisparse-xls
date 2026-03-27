@@ -9,18 +9,16 @@ INTERPRETER_PATH := ~/xls/bazel-bin/xls/dslx/interpreter_main
 NUM_STREAMS := 2
 NUM_CLUSTERS := 1
 NUM_KERNELS := 1
-FLUSH_ITERS := 10
-ARBITER_STAGES := 7
+ARBITER_STAGES := 5
 VB_SIZE := 4
 OB_SIZE := 4
-VB_BANK_SIZE := 2
-QUEUE_DEPTH := 5
-
-MEM_LATENCY := 2
+QUEUE_DEPTH := 2
 
 # inferred constants
 OB_DIVIDED_BY_NUM_STREAMS := $(shell expr $(OB_SIZE) / $(NUM_STREAMS))
+VB_BANK_SIZE := $(shell expr $(VB_SIZE) / $(NUM_STREAMS))
 VECTOR_PAYLOAD_ONE_BITWIDTH := $(shell expr \( $(NUM_STREAMS) + 1 \) \* 32)
+FLUSH_ITERS := $(shell expr $(NUM_STREAMS) \* $(ARBITER_STAGES))
 
 # constants
 IDEAL_SIM_DSLX_PATH := --dslx_path="xls/ideal/matrix_loader:xls/ideal/pe:xls/ideal/result_draining:xls/ideal/shuffle:xls/ideal/vector_loader"
@@ -313,7 +311,6 @@ hdl/__t__vector_unpacker_0_next.sv: xls/$(MODE)/vector_loader/vector_unpacker.x
 	cat xls/$(MODE)/vector_loader/vector_unpacker.x > hdl/t.x
 	sed -i -e 's/<NUM_STREAMS: u32, PAYLOAD_ONE_BITWIDTH: u32 = { ((NUM_STREAMS + u32: 1) << 5)}>//g' hdl/t.x
 	sed -i -e '/NUM_STREAMS:/!s/NUM_STREAMS/u32: $(NUM_STREAMS)/g' hdl/t.x
-	sed -i -e '/BANK_SIZE:/!s/BANK_SIZE/u32: $(BANK_SIZE)/g' hdl/t.x
 	sed -i -e '/PAYLOAD_ONE_BITWIDTH:/!s/PAYLOAD_ONE_BITWIDTH/u32: $(VECTOR_PAYLOAD_ONE_BITWIDTH)/g' hdl/t.x
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=vector_unpacker > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
@@ -326,9 +323,8 @@ hdl/__t__vector_unpacker_0_next.sv: xls/$(MODE)/vector_loader/vector_unpacker.x
 pe: hdl/__t__processing_engine_0_next.sv
 hdl/__t__processing_engine_0_next.sv: xls/$(MODE)/pe/pe.x
 	cat xls/$(MODE)/pe/pe.x > hdl/t.x
-	sed -i -e 's/<NUM_STREAMS: u32, BANK_SIZE: u32, QUEUE_DEPTH: u32>//g' hdl/t.x
+	sed -i -e 's/<NUM_STREAMS: u32, QUEUE_DEPTH: u32>//g' hdl/t.x
 	sed -i -e '/NUM_STREAMS:/!s/NUM_STREAMS/u32: $(NUM_STREAMS)/g' hdl/t.x
-	sed -i -e '/BANK_SIZE:/!s/BANK_SIZE/u32: $(BANK_SIZE)/g' hdl/t.x
 	sed -i -e '/QUEUE_DEPTH:/!s/QUEUE_DEPTH/u32: $(QUEUE_DEPTH)/g' hdl/t.x
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=processing_engine > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir

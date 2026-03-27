@@ -103,8 +103,8 @@ async def matrix_loader_regular_driver(dut: SimHandleBase, matrix_fp: str, hbm_c
         if ok:
             cocotb.start_soon(matrix_loader_worker())
 
-async def matrix_loader_split_driver(dut: SimHandleBase, matrix_fp: str, hbm_chan: int, addr_sig: str, pld_sig: str, latency: int = 2, num_streams: int = 1):
-    total_hbm = hbm_channel.raw_to_cpsr_hbmchannel(matrix_fp, "+1", "#", 4, 4, 2, 1, True)
+async def matrix_loader_split_driver(dut: SimHandleBase, matrix_fp: str, out_vec_buf_len: int, in_vec_buf_len: int, hbm_chan: int, addr_sig: str, pld_sig: str, latency: int = 2, num_streams: int = 1, num_hbm_channels: int = 1):
+    total_hbm = hbm_channel.raw_to_cpsr_hbmchannel(matrix_fp, "+1", "#", out_vec_buf_len, in_vec_buf_len, num_streams, num_hbm_channels, True)
     mem = hbm_channel.HBM_CHAN(total_hbm=total_hbm, chan=hbm_chan, num_streams=num_streams)
     ALL_ONES = 2**32 - 1
     async def matrix_loader_worker():
