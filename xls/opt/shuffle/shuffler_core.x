@@ -49,11 +49,12 @@ pub proc shuffler_core <NUM_STREAMS: u32, FLUSH_ITERS: u32> // this will be depe
         let (new_tok, mp_pld) =
         unroll_for! (idx, (tok, mp)) : (u32, (token, uN[96][NUM_STREAMS])) in u32:0..NUM_STREAMS {
             let read_input_predicate = !arpv_pld[idx] && !state.1[idx];
-            let (n_tok, sp) = recv_if(tok, multistream_payload_i[idx], read_input_predicate, zero!<uN[96]>()); // note mp_rx must be an array
+            // changing this to recv_if_non_blocking removes the need for EOD syncer and makes this behave the same as the original Hisparse Shuffle Unit
+            let (n_tok, sp, _) = recv_if_non_blocking(tok, multistream_payload_i[idx], read_input_predicate, zero!<uN[96]>()); // note mp_rx must be an array
             let n_mp = update(mp, idx, sp);
             (n_tok, n_mp)
         }((new_tok, zero!<uN[96][NUM_STREAMS]>()));
-
+        // trace_fmt!("sfcore rx {:0x}", mp_pld);
         let new_fetch_complete = 
         for (idx, fc) : (u32, u1[NUM_STREAMS]) in u32:0..NUM_STREAMS {
             let n_fc = if (mp_pld[idx][94+:u2] == u2: 2) { update(fc, idx, u1: 1) } else if ( state.2 == u32: 0 ) { update(fc, idx, u1: 0) } else { fc }; 
@@ -82,7 +83,7 @@ pub proc shuffler_core <NUM_STREAMS: u32, FLUSH_ITERS: u32> // this will be depe
 
         let crossbar_payload_type_two = crossbar::crossbar<NUM_STREAMS>(arptt_pld, aoiv_pld, axv_pld, axs_pld);
         let send_eod_predicate = and_reduce(state.1 as uN[NUM_STREAMS]) && state.2 == u32: 0;
-        let new_sent_eod = if (send_eod_predicate && !state.5) { true } else { false };
+        let new_sent_eod = if (send_eod_predicate && !state.5) { true } else if (mp_pld[u32: 0][94+:u2] == u2: 3) { false } else { state.5 }; // note we assume that EOS is synced 
         let (tok4, debug_send) = 
         unroll_for! (idx, (tok, debug)) : (u32, (token, uN[96][NUM_STREAMS])) in u32:0..NUM_STREAMS{
             let pld = if (send_eod_predicate) { u2: 2 ++ uN[94]:0 } else if (state.5 && mp_pld[u32: 0][94+:u2] == u2: 3) {  u2: 3 ++ uN[94]:0 } else { crossbar_payload_type_two[idx] };
@@ -92,6 +93,7 @@ pub proc shuffler_core <NUM_STREAMS: u32, FLUSH_ITERS: u32> // this will be depe
         }((new_tok, zero!<uN[96][NUM_STREAMS]>()));
         
         let new_tok = join(tok1, tok2, tok3, tok4);
+        // trace_fmt!("debug send {:0x}", debug_send);
         // trace_fmt!("current state {:0x} {:0x} {:0x} {:0x}", state.0, state.1, state.2, state.3);
         // trace_fmt!("arb recv {:0x}\nmp recv {:0x}\narb send {:0x} {:0x}\n send {:0x}", arbout_pld, mp_pld, arb_payload_in, arb_payload_valid, debug_send);
         (state.0, new_fetch_complete, new_flush_counter, next_rotate_priority, new_tok, new_sent_eod)

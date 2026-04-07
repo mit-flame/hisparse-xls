@@ -252,8 +252,8 @@ module single_cluster_opt(
     .t__multistream_payload_i__0_vld(ml_t__multistream_payload_type_two__0_vld),
     .t__multistream_payload_i__1(ml_t__multistream_payload_type_two__1),
     .t__multistream_payload_i__1_vld(ml_t__multistream_payload_type_two__1_vld),
-    .t__multistream_payload_o__0_rdy(sfcore_one_t__multistream_payload_i__0_rdy),
-    .t__multistream_payload_o__1_rdy(sfcore_one_t__multistream_payload_i__1_rdy),
+    .t__multistream_payload_o__0_rdy(eos_sync_one_t__multistream_payload_i__0_rdy),
+    .t__multistream_payload_o__1_rdy(eos_sync_one_t__multistream_payload_i__1_rdy),
     // outputs
     .t__multistream_payload_i__0_rdy(sod_sync_one_t__multistream_payload_i__0_rdy),
     .t__multistream_payload_i__1_rdy(sod_sync_one_t__multistream_payload_i__1_rdy),
@@ -261,6 +261,32 @@ module single_cluster_opt(
     .t__multistream_payload_o__0_vld(sod_sync_one_t__multistream_payload_o__0_vld),
     .t__multistream_payload_o__1(sod_sync_one_t__multistream_payload_o__1),
     .t__multistream_payload_o__1_vld(sod_sync_one_t__multistream_payload_o__1_vld)
+  );
+
+  logic eos_sync_one_t__multistream_payload_i__0_rdy;
+  logic eos_sync_one_t__multistream_payload_i__1_rdy;
+  logic [95:0] eos_sync_one_t__multistream_payload_o__0;
+  logic eos_sync_one_t__multistream_payload_o__0_vld;
+  logic [95:0] eos_sync_one_t__multistream_payload_o__1;
+  logic eos_sync_one_t__multistream_payload_o__1_vld;
+
+  __t__eos_syncer_0_next eos_sync_one(
+    // inputs
+    .clk(clk),
+    .rst(rst),
+    .t__multistream_payload_i__0(sod_sync_one_t__multistream_payload_o__0),
+    .t__multistream_payload_i__0_vld(sod_sync_one_t__multistream_payload_o__0_vld),
+    .t__multistream_payload_i__1(sod_sync_one_t__multistream_payload_o__1),
+    .t__multistream_payload_i__1_vld(sod_sync_one_t__multistream_payload_o__1_vld),
+    .t__multistream_payload_o__0_rdy(sfcore_one_t__multistream_payload_i__0_rdy),
+    .t__multistream_payload_o__1_rdy(sfcore_one_t__multistream_payload_i__1_rdy),
+    // outputs
+    .t__multistream_payload_i__0_rdy(eos_sync_one_t__multistream_payload_i__0_rdy),
+    .t__multistream_payload_i__1_rdy(eos_sync_one_t__multistream_payload_i__1_rdy),
+    .t__multistream_payload_o__0(eos_sync_one_t__multistream_payload_o__0),
+    .t__multistream_payload_o__0_vld(eos_sync_one_t__multistream_payload_o__0_vld),
+    .t__multistream_payload_o__1(eos_sync_one_t__multistream_payload_o__1),
+    .t__multistream_payload_o__1_vld(eos_sync_one_t__multistream_payload_o__1_vld)
   );
 
   logic [1:0] sfcore_one_t__i_valid;
@@ -286,10 +312,10 @@ module single_cluster_opt(
   .t__arbiter_i_valid_rdy(arb_one_t__i_valid_rdy),
   .t__arbiter_payload_type_two_i_rdy(arb_one_t__payload_rdy),
   .t__arbiter_rotate_offset_rdy(arb_one_t__rotate_offset_rdy),
-  .t__multistream_payload_i__0(sod_sync_one_t__multistream_payload_o__0),
-  .t__multistream_payload_i__0_vld(sod_sync_one_t__multistream_payload_o__0_vld),
-  .t__multistream_payload_i__1(sod_sync_one_t__multistream_payload_o__1),
-  .t__multistream_payload_i__1_vld(sod_sync_one_t__multistream_payload_o__1_vld),
+  .t__multistream_payload_i__0(eos_sync_one_t__multistream_payload_o__0),
+  .t__multistream_payload_i__0_vld(eos_sync_one_t__multistream_payload_o__0_vld),
+  .t__multistream_payload_i__1(eos_sync_one_t__multistream_payload_o__1),
+  .t__multistream_payload_i__1_vld(eos_sync_one_t__multistream_payload_o__1_vld),
   .t__multistream_payload_o__0_rdy(vecbuf0_t__multistream_payload_o__0_rdy),
   .t__multistream_payload_o__1_rdy(vecbuf1_t__multistream_payload_o__1_rdy),
   // outputs
@@ -447,7 +473,7 @@ module single_cluster_opt(
   __t__vba_recv_0_next vecbuf0_recv(
     .clk(clk),
     .rst(rst),
-    .t__payload_type_three_rdy(eod_syncer_one_vecbuf0_payload_type_three_rdy),
+    .t__payload_type_three_rdy(sod_sync_two_t__multistream_payload_i__0_rdy),
     .t__streaming_pld(vecbuf0_t__streaming_pld),
     .t__streaming_pld_vld(vecbuf0_t__streaming_pld_vld),
     // outputs
@@ -514,7 +540,7 @@ module single_cluster_opt(
   __t__vba_recv_0_next vecbuf1_recv(
     .clk(clk),
     .rst(rst),
-    .t__payload_type_three_rdy(eod_syncer_one_vecbuf1_payload_type_three_rdy),
+    .t__payload_type_three_rdy(sod_sync_two_t__multistream_payload_i__1_rdy),
     .t__streaming_pld(vecbuf1_t__streaming_pld),
     .t__streaming_pld_vld(vecbuf1_t__streaming_pld_vld),
     // outputs
@@ -523,31 +549,6 @@ module single_cluster_opt(
     .t__streaming_pld_rdy(vecbuf1_t__streaming_pld_rdy)
   );
   // =============================================================>
-
-  logic eod_syncer_one_vecbuf0_payload_type_three_rdy;
-  logic eod_syncer_one_vecbuf1_payload_type_three_rdy;
-  logic [95:0] eod_syncer_one_t__multistream_payload_o__0;
-  logic eod_syncer_one_t__multistream_payload_o__0_vld;
-  logic [95:0] eod_syncer_one_t__multistream_payload_o__1;
-  logic eod_syncer_one_t__multistream_payload_o__1_vld;
-
-  __t__eod_syncer_0_next eod_syncer_one(
-    .clk(clk),
-    .rst(rst),
-    .t__multistream_payload_i__0(vecbuf0_t__payload_type_three),
-    .t__multistream_payload_i__0_vld(vecbuf0_t__payload_type_three_vld),
-    .t__multistream_payload_i__1(vecbuf1_t__payload_type_three),
-    .t__multistream_payload_i__1_vld(vecbuf1_t__payload_type_three_vld),
-    .t__multistream_payload_o__0_rdy(sod_sync_two_t__multistream_payload_i__0_rdy),
-    .t__multistream_payload_o__1_rdy(sod_sync_two_t__multistream_payload_i__1_rdy),
-    // outputs
-    .t__multistream_payload_i__0_rdy(eod_syncer_one_vecbuf0_payload_type_three_rdy),
-    .t__multistream_payload_i__1_rdy(eod_syncer_one_vecbuf1_payload_type_three_rdy),
-    .t__multistream_payload_o__0(eod_syncer_one_t__multistream_payload_o__0),
-    .t__multistream_payload_o__0_vld(eod_syncer_one_t__multistream_payload_o__0_vld),
-    .t__multistream_payload_o__1(eod_syncer_one_t__multistream_payload_o__1),
-    .t__multistream_payload_o__1_vld(eod_syncer_one_t__multistream_payload_o__1_vld)
-  );
 
   logic sod_sync_two_t__multistream_payload_i__0_rdy;
   logic sod_sync_two_t__multistream_payload_i__1_rdy;
@@ -560,12 +561,12 @@ module single_cluster_opt(
     // inputs
     .clk(clk),
     .rst(rst),
-    .t__multistream_payload_i__0(eod_syncer_one_t__multistream_payload_o__0),
-    .t__multistream_payload_i__0_vld(eod_syncer_one_t__multistream_payload_o__0_vld),
-    .t__multistream_payload_i__1(eod_syncer_one_t__multistream_payload_o__1),
-    .t__multistream_payload_i__1_vld(eod_syncer_one_t__multistream_payload_o__1_vld),
-    .t__multistream_payload_o__0_rdy(sfcore_two_t__multistream_payload_i__0_rdy),
-    .t__multistream_payload_o__1_rdy(sfcore_two_t__multistream_payload_i__1_rdy),
+    .t__multistream_payload_i__0(vecbuf0_t__payload_type_three),
+    .t__multistream_payload_i__0_vld(vecbuf0_t__payload_type_three_vld),
+    .t__multistream_payload_i__1(vecbuf1_t__payload_type_three),
+    .t__multistream_payload_i__1_vld(vecbuf1_t__payload_type_three_vld),
+    .t__multistream_payload_o__0_rdy(eos_sync_two_t__multistream_payload_i__0_rdy),
+    .t__multistream_payload_o__1_rdy(eos_sync_two_t__multistream_payload_i__1_rdy),
     // outputs
     .t__multistream_payload_i__0_rdy(sod_sync_two_t__multistream_payload_i__0_rdy),
     .t__multistream_payload_i__1_rdy(sod_sync_two_t__multistream_payload_i__1_rdy),
@@ -574,6 +575,33 @@ module single_cluster_opt(
     .t__multistream_payload_o__1(sod_sync_two_t__multistream_payload_o__1),
     .t__multistream_payload_o__1_vld(sod_sync_two_t__multistream_payload_o__1_vld)
   );
+
+  logic eos_sync_two_t__multistream_payload_i__0_rdy;
+  logic eos_sync_two_t__multistream_payload_i__1_rdy;
+  logic [95:0] eos_sync_two_t__multistream_payload_o__0;
+  logic eos_sync_two_t__multistream_payload_o__0_vld;
+  logic [95:0] eos_sync_two_t__multistream_payload_o__1;
+  logic eos_sync_two_t__multistream_payload_o__1_vld;
+
+  __t__eos_syncer_0_next eos_sync_two(
+    // inputs
+    .clk(clk),
+    .rst(rst),
+    .t__multistream_payload_i__0(sod_sync_two_t__multistream_payload_o__0),
+    .t__multistream_payload_i__0_vld(sod_sync_two_t__multistream_payload_o__0_vld),
+    .t__multistream_payload_i__1(sod_sync_two_t__multistream_payload_o__1),
+    .t__multistream_payload_i__1_vld(sod_sync_two_t__multistream_payload_o__1_vld),
+    .t__multistream_payload_o__0_rdy(sfcore_two_t__multistream_payload_i__0_rdy),
+    .t__multistream_payload_o__1_rdy(sfcore_two_t__multistream_payload_i__1_rdy),
+    // outputs
+    .t__multistream_payload_i__0_rdy(eos_sync_two_t__multistream_payload_i__0_rdy),
+    .t__multistream_payload_i__1_rdy(eos_sync_two_t__multistream_payload_i__1_rdy),
+    .t__multistream_payload_o__0(eos_sync_two_t__multistream_payload_o__0),
+    .t__multistream_payload_o__0_vld(eos_sync_two_t__multistream_payload_o__0_vld),
+    .t__multistream_payload_o__1(eos_sync_two_t__multistream_payload_o__1),
+    .t__multistream_payload_o__1_vld(eos_sync_two_t__multistream_payload_o__1_vld)
+  );
+
 
   logic arb_two_t__i_valid_rdy;
   logic [1:0] arb_two_t__original_input_valid;
@@ -623,10 +651,10 @@ module single_cluster_opt(
     .t__arbiter_i_valid_rdy(arb_two_t__i_valid_rdy),
     .t__arbiter_payload_type_two_i_rdy(arb_two_t__payload_rdy),
     .t__arbiter_rotate_offset_rdy(arb_two_t__rotate_offset_rdy),
-    .t__multistream_payload_i__0(sod_sync_two_t__multistream_payload_o__0),
-    .t__multistream_payload_i__0_vld(sod_sync_two_t__multistream_payload_o__0_vld),
-    .t__multistream_payload_i__1(sod_sync_two_t__multistream_payload_o__1),
-    .t__multistream_payload_i__1_vld(sod_sync_two_t__multistream_payload_o__1_vld),
+    .t__multistream_payload_i__0(eos_sync_two_t__multistream_payload_o__0),
+    .t__multistream_payload_i__0_vld(eos_sync_two_t__multistream_payload_o__0_vld),
+    .t__multistream_payload_i__1(eos_sync_two_t__multistream_payload_o__1),
+    .t__multistream_payload_i__1_vld(eos_sync_two_t__multistream_payload_o__1_vld),
     .t__multistream_payload_o__0_rdy(pe0_t__payload_type_three_rdy),
     .t__multistream_payload_o__1_rdy(pe1_t__payload_type_three_rdy),
     // outputs

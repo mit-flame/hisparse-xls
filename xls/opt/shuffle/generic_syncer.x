@@ -24,7 +24,7 @@ pub proc generic_syncer<NUM_STREAMS: u32, COMMAND: u2>
         let (tok, pld, new_seen) = 
         unroll_for! (idx, (tok, payload, seen)) : (u32, (token, uN[96][NUM_STREAMS], u1[NUM_STREAMS])) in u32:0..NUM_STREAMS {
             let recv = if (pause_lanes) { if (state.0[idx] == u1: 0) { true } else { false } } else { true };
-            let (n_tok, spld) = recv_if(tok, multistream_payload_i[idx], recv, uN[96]: 0);
+            let (n_tok, spld, _) = recv_if_non_blocking(tok, multistream_payload_i[idx], recv, uN[96]: 0);
             let n_seen = if (spld[94+:u2] == COMMAND) { update(seen, idx, u1: 1) } else { seen };
             let spld = if (spld[94+:u2] == COMMAND) { uN[96]: 0 } else { spld };
             let n_payload = update(payload, idx, spld);

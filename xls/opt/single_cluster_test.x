@@ -92,13 +92,15 @@ proc Tester {
         spawn matrix_loader_recv::matrix_loader_recv<u32: 2>(stream_payload_in, ptype2_out);
         let (syncout, syncin) = chan<uN[96]>[u32: 2]("sync_sod_sfone");
         spawn generic_syncer::generic_syncer<u32: 2, u2: 1>(ptype2_in, syncout);
+        let (eossyncout, eossyncin) = chan<uN[96]>[u32: 2]("sync_eos_sfone");
+        spawn generic_syncer::generic_syncer<u32: 2, u2: 1>(syncin, eossyncout);
         let (sf_ptype2_out, sf_ptype2_in) = chan<uN[96]>[u32: 2]("sf_payload_type_two_channel");
         let (aptto, aptti) = chan<uN[96][u32: 2]>("arbiter_aptt");
         let (aivo, aivi) = chan<u1[u32: 2]>("arbiter_aiv");
         let (aroo, aroi) = chan<u32>("arbiter_aro");
         let (aco, aci) = chan<arbiter_helper::ArbOut<u32: 2>>("ac");
         spawn shuffler_core::shuffler_core<u32: 2, u32: 8>(
-            syncin, sf_ptype2_out,
+            eossyncin, sf_ptype2_out,
             aptto, aivo, aroo, aci
         );
         spawn arbiter::arbiter_wrapper<u32: 2>(aptti, aivi, aroi, aco);
@@ -121,22 +123,22 @@ proc Tester {
         spawn vba_addr_arbiter::vba_addr_arbiter(vba_la_in[0], vba_sa_in[0], vba_unified_addr_out[0]);
         spawn vba_addr_arbiter::vba_addr_arbiter(vba_la_in[1], vba_sa_in[1], vba_unified_addr_out[1]);
         let (vba_streaming_pld_out, vba_streaming_pld_in) = chan<vector_helper::StreamPayload>[u32: 2]("vba_streaming");
-        let (vbasyncout, vbasyncin) = chan<uN[96]>[u32: 2]("sync_eod_vba");
-        spawn vba_recv::vba_recv(vba_streaming_pld_in[0], vbasyncout[0]);
-        spawn vba_recv::vba_recv(vba_streaming_pld_in[1], vbasyncout[1]);
         let (mptto, mptti) = chan<uN[96]>[u32: 2]("mptt"); // multistream payload type three
-        spawn generic_syncer::generic_syncer<u32: 2, u2: 2>(vbasyncin, mptto);
+        spawn vba_recv::vba_recv(vba_streaming_pld_in[0], mptto[0]);
+        spawn vba_recv::vba_recv(vba_streaming_pld_in[1], mptto[1]);
 
         // final shuffler out. I can use the same shuffler since the index is in the same spot bitwise
         let (syncout, syncin) = chan<uN[96]>[u32: 2]("sync_sod_sftwo");
         spawn generic_syncer::generic_syncer<u32: 2, u2: 1>(mptti, syncout);
+        let (eossyncout, eossyncin) = chan<uN[96]>[u32: 2]("sync_eos_sfone");
+        spawn generic_syncer::generic_syncer<u32: 2, u2: 1>(syncin, eossyncout);
         let (sf_pt3_out, sf_pt3_in) = chan<uN[96]>[u32: 2]("sf_pt3");
         let (aptto, aptti) = chan<uN[96][u32: 2]>("arbiter_aptt");
         let (aivo, aivi) = chan<u1[u32: 2]>("arbiter_aiv");
         let (aroo, aroi) = chan<u32>("arbiter_aro");
         let (aco, aci) = chan<arbiter_helper::ArbOut<u32: 2>>("ac");
         spawn shuffler_core::shuffler_core<u32: 2, u32: 8>(
-            syncin, sf_pt3_out,
+            eossyncin, sf_pt3_out,
             aptto, aivo, aroo, aci
         );
         spawn arbiter::arbiter_wrapper<u32: 2>(aptti, aivi, aroi, aco);

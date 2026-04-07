@@ -6,6 +6,8 @@ CODEGEN_PATH := ~/xls/bazel-bin/xls/tools/codegen_main
 INTERPRETER_PATH := ~/xls/bazel-bin/xls/dslx/interpreter_main
 
 # codegen modifiable constants
+
+# presets for spmv 1 and 2
 NUM_STREAMS := 2
 NUM_CLUSTERS := 1
 NUM_KERNELS := 1
@@ -13,6 +15,15 @@ ARBITER_STAGES := 5
 VB_SIZE := 4
 OB_SIZE := 4
 QUEUE_DEPTH := 2
+
+# presets for spmv 3
+# NUM_STREAMS := 2
+# NUM_CLUSTERS := 1
+# NUM_KERNELS := 1
+# ARBITER_STAGES := 5
+# VB_SIZE := 8
+# OB_SIZE := 8
+# QUEUE_DEPTH := 2
 
 # inferred constants
 OB_DIVIDED_BY_NUM_STREAMS := $(shell expr $(OB_SIZE) / $(NUM_STREAMS))
@@ -54,7 +65,7 @@ clean:
 ifeq ($(MODE),actual)
 all: sf sf_core arb ml vl vau vunpack pe cpacker cmerger kmerger
 else ifeq ($(MODE),opt)
-all: sod_syncer eod_syncer sf_core arb ml_recv ml_send ml_addr_arb ml_pld_arb vl vau_send vau_recv vau_addr_arb vunpack pe_send pe_recv pe_addr_arb cpacker cmerger kmerger
+all: sod_syncer eos_syncer sf_core arb ml_recv ml_send ml_addr_arb ml_pld_arb vl vau_send vau_recv vau_addr_arb vunpack pe_send pe_recv pe_addr_arb cpacker cmerger kmerger
 endif
 # intermediate targets
 MODE_REQUIRED_TARGETS := all sf sf_core arb ml vl vau vunpack pe cpacker cmerger kmerger
@@ -134,17 +145,17 @@ hdl/__t__sod_syncer_0_next.sv: xls/$(MODE)/shuffle/generic_syncer.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
 
-.PHONY: eod_syncer
-eod_syncer: hdl/__t__eod_syncer_0_next.sv
-hdl/__t__eod_syncer_0_next.sv: xls/$(MODE)/shuffle/generic_syncer.x
+.PHONY: eos_syncer
+eos_syncer: hdl/__t__eos_syncer_0_next.sv
+hdl/__t__eos_syncer_0_next.sv: xls/$(MODE)/shuffle/generic_syncer.x
 	cat xls/$(MODE)/shuffle/generic_syncer.x > hdl/t.x
 	sed -i -e 's/<NUM_STREAMS: u32, COMMAND: u2>//g' hdl/t.x
-	sed -i -e 's/generic_syncer/eod_syncer/g' hdl/t.x	
+	sed -i -e 's/generic_syncer/eos_syncer/g' hdl/t.x	
 	sed -i -e '/NUM_STREAMS:/!s/NUM_STREAMS/u32: $(NUM_STREAMS)/g' hdl/t.x
-	sed -i -e 's/COMMAND/u2: 2/g' hdl/t.x
-	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=eod_syncer > t.ir
+	sed -i -e 's/COMMAND/u2: 3/g' hdl/t.x
+	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=eos_syncer > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
-	cd hdl; $(CODEGEN_PATH) $(GENERIC_SYNCER_CODEGEN_FLAGS) t.opt.ir > __t__eod_syncer_0_next.sv
+	cd hdl; $(CODEGEN_PATH) $(GENERIC_SYNCER_CODEGEN_FLAGS) t.opt.ir > __t__eos_syncer_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir

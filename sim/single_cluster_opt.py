@@ -210,7 +210,7 @@ if __name__ == "__main__":
         "__t__matrix_loader_addr_arbiter_0_next.sv",
         "__t__matrix_loader_pld_arbiter_0_next.sv",
         "__t__sod_syncer_0_next.sv",
-        "__t__eod_syncer_0_next.sv",
+        "__t__eos_syncer_0_next.sv",
         "__t__shuffler_core_0_next.sv",
         "__t__vba_recv_0_next.sv",
         "__t__vba_send_0_next.sv",
