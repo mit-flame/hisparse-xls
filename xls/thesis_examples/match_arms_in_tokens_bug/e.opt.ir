@@ -1,0 +1,39 @@
+package example
+
+file_number 0 "example.x"
+
+chan example__addr(bits[32], id=0, kind=streaming, ops=send_only, flow_control=ready_valid, strictness=proven_mutually_exclusive)
+chan example__pld(bits[32], id=1, kind=streaming, ops=receive_only, flow_control=ready_valid, strictness=proven_mutually_exclusive)
+
+top proc __example__example_0_next(__state_1: token, implicit_token__receive_16: token, implicit_token__receive_32: token, implicit_token__new_tok: token, implicit_token__new_tok__2: token, __state_0: bits[2], init={token, token, token, token, token, 0}) {
+  __state_0: bits[2] = state_read(state_element=__state_0, id=186)
+  __state_1: token = state_read(state_element=__state_1, id=111)
+  implicit_token__new_tok: token = state_read(state_element=implicit_token__new_tok, id=117)
+  implicit_token__new_tok__2: token = state_read(state_element=implicit_token__new_tok__2, id=119)
+  bit_slice.222: bits[1] = bit_slice(__state_0, start=0, width=1, id=222)
+  bit_slice.223: bits[1] = bit_slice(__state_0, start=1, width=1, id=223)
+  unexpand_for_next_value_41_0_case_0: bits[2] = literal(value=1, id=202)
+  after_all.92: token = after_all(__state_1, implicit_token__new_tok, implicit_token__new_tok__2, id=92)
+  literal.6: bits[32] = literal(value=0, id=6, pos=[(0,11,10)])
+  nor.228: bits[1] = nor(bit_slice.222, bit_slice.223, id=228)
+  eq.214: bits[1] = eq(__state_0, unexpand_for_next_value_41_0_case_0, id=214)
+  new_tok: token = send(after_all.92, literal.6, predicate=nor.228, channel=example__addr, id=13)
+  implicit_token__receive_16: token = state_read(state_element=implicit_token__receive_16, id=113)
+  implicit_token__receive_32: token = state_read(state_element=implicit_token__receive_32, id=115)
+  new_tok__2: token = send(after_all.92, literal.6, predicate=eq.214, channel=example__addr, id=29)
+  after_all.86: token = after_all(new_tok, implicit_token__receive_16, implicit_token__receive_32, id=86)
+  after_all.87: token = after_all(new_tok__2, implicit_token__receive_16, implicit_token__receive_32, id=87)
+  receive.16: (token, bits[32]) = receive(after_all.86, predicate=nor.228, channel=example__pld, id=16)
+  receive.32: (token, bits[32]) = receive(after_all.87, predicate=eq.214, channel=example__pld, id=32)
+  new_tok__1: token = tuple_index(receive.16, index=0, id=18, pos=[(0,13,17)])
+  new_tok__3: token = tuple_index(receive.32, index=0, id=34, pos=[(0,18,17)])
+  unexpand_for_next_value_41_0_case_1: bits[2] = literal(value=2, id=203)
+  next_value_82: () = next_value(param=implicit_token__receive_16, value=new_tok__1, predicate=nor.228, id=114)
+  next_value_85: () = next_value(param=implicit_token__receive_32, value=new_tok__3, predicate=eq.214, id=116)
+  next_value_89: () = next_value(param=implicit_token__new_tok, value=new_tok, predicate=nor.228, id=118)
+  next_value_91: () = next_value(param=implicit_token__new_tok__2, value=new_tok__2, predicate=eq.214, id=120)
+  next_value_41_1_case_0: () = next_value(param=__state_1, value=new_tok__1, predicate=nor.228, id=136)
+  next_value_41_1_case_1: () = next_value(param=__state_1, value=new_tok__3, predicate=eq.214, id=140)
+  next_value_41_0_case_0__1: () = next_value(param=__state_0, value=unexpand_for_next_value_41_0_case_0, predicate=nor.228, id=192)
+  next_value_41_0_case_1__1: () = next_value(param=__state_0, value=unexpand_for_next_value_41_0_case_1, predicate=eq.214, id=193)
+}

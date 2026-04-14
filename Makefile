@@ -84,14 +84,14 @@ OPT_LEVEL :=
 SF_CODEGEN_FLAGS := --pipeline_stages=3 --worst_case_throughput=$(II) --delay_model=unit --reset=rst
 SF_CORE_CODEGEN_FLAGS := --pipeline_stages=3 --worst_case_throughput=$(II) --delay_model=unit --reset=rst
 ARBITER_CODEGEN_FLAGS := --pipeline_stages=$(ARBITER_STAGES) --worst_case_throughput=$(II) --flop_inputs_kind=skid --delay_model=unit --reset=rst
-ML_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --io_constraints=t__payload_type_one_index:send:t__payload_type_one:recv:2:2 --worst_case_throughput=$(II)
-VL_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --io_constraints=t__hbm_vector_addr:send:t__hbm_vector_payload:recv:2:2 --worst_case_throughput=$(II)
-VECBUF_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --io_constraints=t__vecbuf_bank_addr:send:t__vecbuf_dout:send:2:2,t__vecbuf_bank_addr:send:t__vecbuf_din:recv:2:2 --worst_case_throughput=$(II)
+ML_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
+VL_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
+VECBUF_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
 VUNPACK_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
-PE_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --io_constraints=t__vecbuf_bank_addr:send:t__vecbuf_bank_dout:send:2:2,t__vecbuf_bank_addr:send:t__vecbuf_bank_din:recv:2:2 --worst_case_throughput=$(II)
+PE_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
 CPACKER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
 CMERGER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
-KMERGER_CODEGEN_FLAGS := --io_constraints=t__hbm_vector_addr:send:t__hbm_vector_payload:send:2:2 --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
+KMERGER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
 endif
 ifeq ($(MODE),opt)
 # memories are one cycle read, one cycle write
