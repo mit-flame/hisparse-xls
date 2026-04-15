@@ -251,6 +251,23 @@ def raw_to_cpsr_hbmchannel(
     return _hbm
 
 """
+converts grabbed value from mem into int
+"""
+def grab_binary_value(mem: "HBM_CHAN", addr: int) -> int:
+    packed_pld = mem[addr]
+    packed_pld_str = ""
+    ALL_ONES = 2**32 - 1
+    for stream in reversed(packed_pld):
+        if type(stream[0]) == str:
+            if "+" in stream[0]: # next row marker
+                packed_pld_str += f"{ALL_ONES:0{8}x}" + f"{int(stream[0][1:]):0{8}x}"
+            else: # padding
+                packed_pld_str += f"{0:0{8}x}" + f"{0:0{8}x}"
+        else:
+            packed_pld_str += f"{stream[1]:0{8}x}" + f"{stream[0]:0{8}x}"
+    return int(packed_pld_str, 16)
+
+"""
 creates a mock hbm that responds to index queries for a single hbm channel.
 Multiple hbm channels would be multiple instances of this class with differing specific_chan's
 written horribly (this entire file is, this entire repo is)

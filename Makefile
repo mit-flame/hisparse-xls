@@ -14,7 +14,7 @@ NUM_KERNELS := 1
 ARBITER_STAGES := 5
 VB_SIZE := 4
 OB_SIZE := 4
-QUEUE_DEPTH := 2
+QUEUE_DEPTH := 5 # assuming read is 2 cycle write is 3 cycle
 
 # presets for spmv 3
 # NUM_STREAMS := 2
@@ -23,7 +23,7 @@ QUEUE_DEPTH := 2
 # ARBITER_STAGES := 5
 # VB_SIZE := 8
 # OB_SIZE := 8
-# QUEUE_DEPTH := 2
+# QUEUE_DEPTH := 5 # assuming read is 2 cycle write is 3 cycle
 
 # inferred constants
 OB_DIVIDED_BY_NUM_STREAMS := $(shell expr $(OB_SIZE) / $(NUM_STREAMS))
@@ -57,10 +57,16 @@ clean:
 	cd hdl; mv single_cluster_opt.sv /tmp/
 	cd hdl; mv single_cluster_actual.sv /tmp/
 	cd hdl; mv matrix_loader_opt_top.sv /tmp/
+	cd hdl; mv single_cluster_bram_info_pipeline.sv /tmp/
+	cd hdl; mv single_cluster_opt_driver.sv /tmp/
+	cd hdl; mv single_cluster_opt_fpga_top.sv /tmp/
 	cd hdl; rm *
 	cd hdl; mv /tmp/single_cluster_opt.sv .
 	cd hdl; mv /tmp/single_cluster_actual.sv .
 	cd hdl; mv /tmp/matrix_loader_opt_top.sv .
+	cd hdl; mv /tmp/single_cluster_bram_info_pipeline.sv .
+	cd hdl; mv /tmp/single_cluster_opt_driver.sv .
+	cd hdl; mv /tmp/single_cluster_opt_fpga_top.sv .
 
 ifeq ($(MODE),actual)
 all: sf sf_core arb ml vl vau vunpack pe cpacker cmerger kmerger
@@ -102,10 +108,10 @@ GENERIC_SYNCER_CODEGEN_FLAGS := --pipeline_stages=3 --worst_case_throughput=$(II
 SF_CORE_CODEGEN_FLAGS := --pipeline_stages=3 --worst_case_throughput=$(II) --delay_model=unit --reset=rst --flop_inputs_kind=skid
 ARBITER_CODEGEN_FLAGS := --pipeline_stages=$(ARBITER_STAGES) --worst_case_throughput=$(II) --flop_inputs_kind=skid --delay_model=unit --reset=rst
 ML_RECV_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
-ML_SEND_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
+ML_SEND_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II) --flop_inputs_kind=skid
 ML_ADDR_ARBITER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
 ML_PLD_ARBITER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
-VL_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
+VL_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II) --flop_inputs_kind=skid
 VAU_SEND_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
 VAU_RECV_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
 VUNPACK_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)

@@ -96,9 +96,9 @@ class ProcTester:
         cocotb.start_soon(cycle_counter())
         await RisingEdge(self.dut.clk)
         if reset:
-            self.dut.rst.value = 1
+            self.reset.value = 1
             await ClockCycles(self.dut.clk, 2)
-            self.dut.rst.value = 0
+            self.reset.value = 0
             await ClockCycles(self.dut.clk, 2)
 
 def runner(basepath: str, files: list, toplevel_module_name: str, test_module_name: str):
