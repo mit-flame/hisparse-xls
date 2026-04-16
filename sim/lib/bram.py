@@ -22,9 +22,8 @@ async def bram_port_driver(dut: SimHandleBase, latency: int, base_name: str, bac
         if en:
             outp = backing_memory[addr]
             if wea:
-                print(f"{wea} {base_name} is writing {din} at addr {addr}")
+                # print(f"{wea} {base_name} is writing {din} at addr {addr}")
                 backing_memory[addr] = din
-                print(f"mem {backing_memory}")
             getattr(dut, f"{base_name}_dout").value = outp
     while True:
         await RisingEdge(dut.clk)

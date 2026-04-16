@@ -129,7 +129,7 @@ module single_cluster_opt_driver(
             state <= IDLE;
             kmerger_t__hbm_vector_addr_rdy <= 0;
             kmerger_t__hbm_vector_payload_rdy <= 0;
-            cur_row_part <= 1;
+            cur_row_part <= 0;
             drive_one_sent <= 0;
             num_cycles <= 0;
             finished <= 0;
@@ -205,9 +205,9 @@ module single_cluster_opt_driver(
                     end
                 end
                 RES_WAIT: begin
-                    if (kmerger_t__hbm_vector_addr_vld && kmerger_t__hbm_vector_payload_vld) begin
-                        final_vec[(kmerger_t__hbm_vector_addr >> 1)] <= kmerger_t__hbm_vector_payload[63:32];
-                        final_vec[(kmerger_t__hbm_vector_addr >> 1) + 1] <= kmerger_t__hbm_vector_payload[31:0];
+                    if (kmerger_t__hbm_vector_addr_rdy && kmerger_t__hbm_vector_payload_rdy) begin
+                        final_vec[(kmerger_t__hbm_vector_addr << 1)] <= kmerger_t__hbm_vector_payload[63:32];
+                        final_vec[(kmerger_t__hbm_vector_addr << 1) + 1] <= kmerger_t__hbm_vector_payload[31:0];
                         cur_res_read <= cur_res_read + 1;
                         if (cur_res_read == 1) begin
                             cur_row_part <= 1;

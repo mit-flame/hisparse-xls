@@ -386,7 +386,8 @@ module single_cluster_opt_fpga_top(
         .clk(clk),
         .reset(reset),
         .info({dut_vecbuf0_t__unified_addr[126:125], dut_vecbuf0_t__unified_addr[29:0], dut_vecbuf0_t__unified_addr[63:32]}),
-        .info_vld(dut_vecbuf0_t__unified_addr_vld),
+        // since write is enabled, we must ensure outgoing payloads are only valid if they originate from a read request
+        .info_vld(dut_vecbuf0_t__unified_addr_vld && !dut_vecbuf0_t__unified_addr[127]),
         .downstream_ready(dut_vecbuf0_t__streaming_pld_rdy),
         .dout(vau0_bram_dout),
         //outputs
@@ -414,7 +415,8 @@ module single_cluster_opt_fpga_top(
         .clk(clk),
         .reset(reset),
         .info({dut_vecbuf1_t__unified_addr[126:125], dut_vecbuf1_t__unified_addr[29:0], dut_vecbuf1_t__unified_addr[63:32]}),
-        .info_vld(dut_vecbuf1_t__unified_addr_vld),
+        // since write is enabled, we must ensure outgoing payloads are only valid if they originate from a read request
+        .info_vld(dut_vecbuf1_t__unified_addr_vld && !dut_vecbuf1_t__unified_addr[127]),
         .downstream_ready(dut_vecbuf1_t__streaming_pld_rdy),
         .dout(vau1_bram_dout),
         //outputs
@@ -442,7 +444,8 @@ module single_cluster_opt_fpga_top(
         .clk(clk),
         .reset(reset),
         .info({dut_pe0_t__unified_addr[126:125], 1'b0, dut_pe0_t__unified_addr[124:96], dut_pe0_t__unified_addr[63:0]}),
-        .info_vld(dut_pe0_t__unified_addr_vld),
+        // since write is enabled, we must ensure outgoing payloads are only valid if they originate from a read request
+        .info_vld(dut_pe0_t__unified_addr_vld && !dut_pe0_t__unified_addr[127]),
         .downstream_ready(dut_pe0_t__unified_pld_rdy),
         .dout(pe0s_bram_dout),
         //outputs
@@ -479,7 +482,8 @@ module single_cluster_opt_fpga_top(
         .clk(clk),
         .reset(reset),
         .info({dut_pe1_t__unified_addr[126:125], 1'b0, dut_pe1_t__unified_addr[124:96], dut_pe1_t__unified_addr[63:0]}),
-        .info_vld(dut_pe1_t__unified_addr_vld),
+        // since write is enabled, we must ensure outgoing payloads are only valid if they originate from a read request
+        .info_vld(dut_pe1_t__unified_addr_vld && !dut_pe1_t__unified_addr[127]),
         .downstream_ready(dut_pe1_t__unified_pld_rdy),
         .dout(pe1s_bram_dout),
         //outputs
