@@ -267,6 +267,36 @@ def grab_binary_value(mem: "HBM_CHAN", addr: int) -> int:
             packed_pld_str += f"{stream[1]:0{8}x}" + f"{stream[0]:0{8}x}"
     return int(packed_pld_str, 16)
 
+def vec_int_func(mem: list, addr: int): 
+    packed_pld_str = ""
+    for stream in range(2):
+        packed_pld_str += f"{mem[addr*2 + stream]:0{8}x}"
+    return int(packed_pld_str, 16)
+
+"""
+    converts a single HBM chan's contents into vivado's COE file format
+    probably assumess the arch is two stream
+    see https://docs.amd.com/r/2024.2-English/ug896-vivado-ip/COE-File-Examples
+"""
+def hbm_chan_to_coe(mem: "HBM_CHAN"):
+    coe = "memory_initialization_radix=16;\nmemory_initialization_vector="
+    for i in range(len(mem)):
+        coe += f"\n{grab_binary_value(mem, i):0{32}x},"
+    coe = coe[:-1]
+    coe += ";"
+    print(coe)
+
+"""
+    does same as above for input vec, definitely assumes 2 stream
+"""
+def vec_to_coe(mem: list):
+    coe = "memory_initialization_radix=16;\nmemory_initialization_vector="
+    for i in range(len(mem)//2):
+        coe += f"\n{vec_int_func(mem, i):0{16}x},"
+    coe = coe[:-1]
+    coe += ";"
+    print(coe)
+
 """
 creates a mock hbm that responds to index queries for a single hbm channel.
 Multiple hbm channels would be multiple instances of this class with differing specific_chan's
@@ -313,14 +343,17 @@ class HBM_CHAN:
         # packed data request
         else:
             return self.hbm[ind - self.metadata_range]
+        
+    def __len__(self):
+        return self.metadata_range + len(self.hbm)
                 
 
     
 
 if __name__ == "__main__":
-    # HBM = raw_to_cpsr_hbmchannels("../data/spmv1.json", "+1", "#", 2, 2, 2, 1)
-    # HBM = raw_to_cpsr_hbmchannels("../data/spmv2.json", -1, None, 12, 12, 2, 2, True)
-    HBM = raw_to_cpsr_hbmchannel_iterator("../data/spmv3.json", "+1", "#", 12, 12, 2, 2, True)
+    # HBM = raw_to_cpsr_hbmchannels("../../data/spmv1.json", "+1", "#", 2, 2, 2, 1)
+    # HBM = raw_to_cpsr_hbmchannels("../../data/spmv2.json", -1, None, 12, 12, 2, 2, True)
+    HBM = raw_to_cpsr_hbmchannel_iterator("../../data/spmv3.json", "+1", "#", 12, 12, 2, 2, True)
     for partition, hbm_channels in HBM.items():
         if partition == "metadata":
             continue
@@ -363,3 +396,7 @@ if __name__ == "__main__":
             for _, stream in final_streams.items():
                 print(f"DATA: {" ".join(stream["DATA"][::-1])}")
         print("-"*30)
+    total_hbm = raw_to_cpsr_hbmchannel("/home/ayana/MEng/hisparse-xls/data/spmv1.json", "+1", "#", 4, 4, 2, 1, True)
+    hbm_chan_to_coe(HBM_CHAN(total_hbm=total_hbm, chan=0, num_streams=2))
+    vec_to_coe(list(range(8)))
+    print()

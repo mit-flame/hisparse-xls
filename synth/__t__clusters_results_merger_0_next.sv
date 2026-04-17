@@ -1,0 +1,184 @@
+module __t__clusters_results_merger_0_next(
+  input wire clk,
+  input wire rst,
+  input wire [95:0] t__multistream_vector_payload_one__0,
+  input wire t__multistream_vector_payload_one__0_vld,
+  input wire t__vector_payload_one_rdy,
+  output wire t__multistream_vector_payload_one__0_rdy,
+  output wire [95:0] t__vector_payload_one,
+  output wire t__vector_payload_one_vld
+);
+  reg [95:0] ____state_5;
+  reg [1:0] ____state_0;
+  reg ____state_3;
+  reg [29:0] ____state_2;
+  reg p0_valid;
+  reg p1_valid;
+  reg [95:0] __t__multistream_vector_payload_one__0_reg;
+  reg __t__multistream_vector_payload_one__0_valid_reg;
+  reg [95:0] __t__vector_payload_one_reg;
+  reg __t__vector_payload_one_valid_reg;
+  wire [1:0] unexpand_for_next_value_202_0__1_case_1_case_1;
+  wire [1:0] unexpand_for_next_value_202_0__1_case_0;
+  wire st2_predicate_piece_0;
+  wire st2_2_case_cmp;
+  wire st2_1_case_cmp;
+  wire got_eos__1;
+  wire [2:0] st2_predicate_piece_2;
+  wire or_893;
+  wire vpo_tx;
+  wire t__vector_payload_one_valid_inv;
+  wire or_830;
+  wire new_state__1_1_case_cmp;
+  wire __t__vector_payload_one_vld_buf;
+  wire t__vector_payload_one_valid_load_en;
+  wire nor_833;
+  wire and_834;
+  wire and_835;
+  wire nor_837;
+  wire and_838;
+  wire t__vector_payload_one_load_en;
+  wire [1:0] ____state_2__next_value_predicates;
+  wire [1:0] ____state_3__next_value_predicates;
+  wire [3:0] ____state_0__next_value_predicates;
+  wire [2:0] one_hot_849;
+  wire [2:0] one_hot_850;
+  wire [4:0] one_hot_851;
+  wire [1:0] concat_844;
+  wire p0_stage_done;
+  wire [2:0] one_hot_971;
+  wire [3:0] one_hot_977;
+  wire and_936;
+  wire t__multistream_vector_payload_one__0_valid_inv;
+  wire and_922;
+  wire and_923;
+  wire and_929;
+  wire and_930;
+  wire and_941;
+  wire and_942;
+  wire t__multistream_vector_payload_one__0_valid_load_en;
+  wire ____state_2__at_most_one_next_value;
+  wire ____state_3__at_most_one_next_value;
+  wire ____state_0__at_most_one_next_value;
+  wire [1:0] concat_925;
+  wire [29:0] payload_index_incremented;
+  wire [29:0] new_payload_index__1;
+  wire [1:0] concat_932;
+  wire [3:0] concat_944;
+  wire [1:0] unexpand_for_next_value_202_0__1_case_2;
+  wire t__multistream_vector_payload_one__0_load_en;
+  wire or_984;
+  wire or_986;
+  wire or_988;
+  wire p1_enable;
+  wire p0_enable;
+  wire [29:0] one_hot_sel_926;
+  wire or_927;
+  wire one_hot_sel_933;
+  wire or_934;
+  wire [95:0] t__multistream_vector_payload_one__0_select;
+  wire [1:0] one_hot_sel_945;
+  wire or_946;
+  wire [95:0] vpo_pld;
+  wire or_990;
+  wire or_992;
+  assign unexpand_for_next_value_202_0__1_case_1_case_1 = 2'h2;
+  assign unexpand_for_next_value_202_0__1_case_0 = 2'h1;
+  assign st2_predicate_piece_0 = ~(____state_0[0] | ____state_0[1]);
+  assign st2_2_case_cmp = ____state_0 == unexpand_for_next_value_202_0__1_case_1_case_1;
+  assign st2_1_case_cmp = ____state_0 == unexpand_for_next_value_202_0__1_case_0;
+  assign got_eos__1 = ____state_5[95:94] == 2'h3;
+  assign st2_predicate_piece_2 = {st2_2_case_cmp, st2_1_case_cmp, st2_predicate_piece_0};
+  assign or_893 = ~st2_predicate_piece_0 | __t__multistream_vector_payload_one__0_valid_reg;
+  assign vpo_tx = 1'h0 & st2_predicate_piece_2[0] | ~got_eos__1 & st2_predicate_piece_2[1] | 1'h1 & st2_predicate_piece_2[2];
+  assign t__vector_payload_one_valid_inv = ~__t__vector_payload_one_valid_reg;
+  assign or_830 = ____state_0[0] | ____state_0[1];
+  assign new_state__1_1_case_cmp = got_eos__1 | ____state_3;
+  assign __t__vector_payload_one_vld_buf = or_893 & vpo_tx;
+  assign t__vector_payload_one_valid_load_en = t__vector_payload_one_rdy | t__vector_payload_one_valid_inv;
+  assign nor_833 = ~(~st2_1_case_cmp | ____state_5[94] | ____state_5[95]);
+  assign and_834 = st2_1_case_cmp & or_830;
+  assign and_835 = st2_2_case_cmp & ~st2_1_case_cmp & or_830;
+  assign nor_837 = ~(~st2_1_case_cmp | got_eos__1 | ____state_3);
+  assign and_838 = st2_1_case_cmp & new_state__1_1_case_cmp;
+  assign t__vector_payload_one_load_en = __t__vector_payload_one_vld_buf & t__vector_payload_one_valid_load_en;
+  assign ____state_2__next_value_predicates = {st2_2_case_cmp, nor_833};
+  assign ____state_3__next_value_predicates = {and_834, and_835};
+  assign ____state_0__next_value_predicates = {st2_predicate_piece_0, st2_2_case_cmp, nor_837, and_838};
+  assign one_hot_849 = {____state_2__next_value_predicates[1:0] == 2'h0, ____state_2__next_value_predicates[1] && !____state_2__next_value_predicates[0], ____state_2__next_value_predicates[0]};
+  assign one_hot_850 = {____state_3__next_value_predicates[1:0] == 2'h0, ____state_3__next_value_predicates[1] && !____state_3__next_value_predicates[0], ____state_3__next_value_predicates[0]};
+  assign one_hot_851 = {____state_0__next_value_predicates[3:0] == 4'h0, ____state_0__next_value_predicates[3] && ____state_0__next_value_predicates[2:0] == 3'h0, ____state_0__next_value_predicates[2] && ____state_0__next_value_predicates[1:0] == 2'h0, ____state_0__next_value_predicates[1] && !____state_0__next_value_predicates[0], ____state_0__next_value_predicates[0]};
+  assign concat_844 = {st2_2_case_cmp, st2_1_case_cmp};
+  assign p0_stage_done = or_893 & (~vpo_tx | t__vector_payload_one_load_en);
+  assign one_hot_971 = {concat_844[1:0] == 2'h0, concat_844[1] && !concat_844[0], concat_844[0]};
+  assign one_hot_977 = {st2_predicate_piece_2[2:0] == 3'h0, st2_predicate_piece_2[2] && st2_predicate_piece_2[1:0] == 2'h0, st2_predicate_piece_2[1] && !st2_predicate_piece_2[0], st2_predicate_piece_2[0]};
+  assign and_936 = st2_predicate_piece_0 & p0_stage_done;
+  assign t__multistream_vector_payload_one__0_valid_inv = ~__t__multistream_vector_payload_one__0_valid_reg;
+  assign and_922 = st2_2_case_cmp & p0_stage_done;
+  assign and_923 = nor_833 & p0_stage_done;
+  assign and_929 = and_834 & p0_stage_done;
+  assign and_930 = and_835 & p0_stage_done;
+  assign and_941 = nor_837 & p0_stage_done;
+  assign and_942 = and_838 & p0_stage_done;
+  assign t__multistream_vector_payload_one__0_valid_load_en = and_936 | t__multistream_vector_payload_one__0_valid_inv;
+  assign ____state_2__at_most_one_next_value = st2_2_case_cmp == one_hot_849[1] & nor_833 == one_hot_849[0];
+  assign ____state_3__at_most_one_next_value = and_834 == one_hot_850[1] & and_835 == one_hot_850[0];
+  assign ____state_0__at_most_one_next_value = st2_predicate_piece_0 == one_hot_851[3] & st2_2_case_cmp == one_hot_851[2] & nor_837 == one_hot_851[1] & and_838 == one_hot_851[0];
+  assign concat_925 = {and_922, and_923};
+  assign payload_index_incremented = ____state_2 + 30'h0000_0001;
+  assign new_payload_index__1 = 30'h0000_0000;
+  assign concat_932 = {and_929, and_930};
+  assign concat_944 = {and_936, and_922, and_941, and_942};
+  assign unexpand_for_next_value_202_0__1_case_2 = 2'h0;
+  assign t__multistream_vector_payload_one__0_load_en = t__multistream_vector_payload_one__0_vld & t__multistream_vector_payload_one__0_valid_load_en;
+  assign or_984 = ~p0_stage_done | ____state_2__at_most_one_next_value | rst;
+  assign or_986 = ~p0_stage_done | ____state_3__at_most_one_next_value | rst;
+  assign or_988 = ~p0_stage_done | ____state_0__at_most_one_next_value | rst;
+  assign p1_enable = 1'h1;
+  assign p0_enable = 1'h1;
+  assign one_hot_sel_926 = payload_index_incremented & {30{concat_925[0]}} | new_payload_index__1 & {30{concat_925[1]}};
+  assign or_927 = and_922 | and_923;
+  assign one_hot_sel_933 = 1'h0 & concat_932[0] | new_state__1_1_case_cmp & concat_932[1];
+  assign or_934 = and_929 | and_930;
+  assign t__multistream_vector_payload_one__0_select = st2_predicate_piece_0 ? __t__multistream_vector_payload_one__0_reg : 96'h0000_0000_0000_0000_0000_0000;
+  assign one_hot_sel_945 = unexpand_for_next_value_202_0__1_case_1_case_1 & {2{concat_944[0]}} | unexpand_for_next_value_202_0__1_case_2 & {2{concat_944[1]}} | unexpand_for_next_value_202_0__1_case_2 & {2{concat_944[2]}} | unexpand_for_next_value_202_0__1_case_0 & {2{concat_944[3]}};
+  assign or_946 = and_936 | and_922 | and_941 | and_942;
+  assign vpo_pld = {____state_5[95:94], ____state_2, ____state_5[63:0]} & {96{concat_844[0]}} | 96'hc000_0000_0000_0000_0000_0000 & {96{concat_844[1]}};
+  assign or_990 = ~p0_stage_done | concat_844 == one_hot_971[1:0] | rst;
+  assign or_992 = ~p0_stage_done | st2_predicate_piece_2 == one_hot_977[2:0] | rst;
+  always_ff @ (posedge clk) begin
+    if (rst) begin
+      ____state_5 <= 96'h0000_0000_0000_0000_0000_0000;
+      ____state_0 <= 2'h0;
+      ____state_3 <= 1'h0;
+      ____state_2 <= 30'h0000_0000;
+      p0_valid <= 1'h0;
+      p1_valid <= 1'h0;
+      __t__multistream_vector_payload_one__0_reg <= 96'h0000_0000_0000_0000_0000_0000;
+      __t__multistream_vector_payload_one__0_valid_reg <= 1'h0;
+      __t__vector_payload_one_reg <= 96'h0000_0000_0000_0000_0000_0000;
+      __t__vector_payload_one_valid_reg <= 1'h0;
+    end else begin
+      ____state_5 <= and_936 ? t__multistream_vector_payload_one__0_select : ____state_5;
+      ____state_0 <= or_946 ? one_hot_sel_945 : ____state_0;
+      ____state_3 <= or_934 ? one_hot_sel_933 : ____state_3;
+      ____state_2 <= or_927 ? one_hot_sel_926 : ____state_2;
+      p0_valid <= p0_enable ? p0_stage_done : p0_valid;
+      p1_valid <= p1_enable ? p0_valid : p1_valid;
+      __t__multistream_vector_payload_one__0_reg <= t__multistream_vector_payload_one__0_load_en ? t__multistream_vector_payload_one__0 : __t__multistream_vector_payload_one__0_reg;
+      __t__multistream_vector_payload_one__0_valid_reg <= t__multistream_vector_payload_one__0_valid_load_en ? t__multistream_vector_payload_one__0_vld : __t__multistream_vector_payload_one__0_valid_reg;
+      __t__vector_payload_one_reg <= t__vector_payload_one_load_en ? vpo_pld : __t__vector_payload_one_reg;
+      __t__vector_payload_one_valid_reg <= t__vector_payload_one_valid_load_en ? __t__vector_payload_one_vld_buf : __t__vector_payload_one_valid_reg;
+    end
+  end
+  assign t__multistream_vector_payload_one__0_rdy = t__multistream_vector_payload_one__0_load_en;
+  assign t__vector_payload_one = __t__vector_payload_one_reg;
+  assign t__vector_payload_one_vld = __t__vector_payload_one_valid_reg;
+  `ifdef ASSERT_ON
+  ____state_2__at_most_one_next_value_assert: assert property (@(posedge clk) disable iff ($sampled(rst !== 1'h0 || $isunknown(or_984))) or_984) else $fatal(0, "More than one next_value fired for state element: __state_2");
+  ____state_3__at_most_one_next_value_assert: assert property (@(posedge clk) disable iff ($sampled(rst !== 1'h0 || $isunknown(or_986))) or_986) else $fatal(0, "More than one next_value fired for state element: __state_3");
+  ____state_0__at_most_one_next_value_assert: assert property (@(posedge clk) disable iff ($sampled(rst !== 1'h0 || $isunknown(or_988))) or_988) else $fatal(0, "More than one next_value fired for state element: __state_0");
+  __xls_invariant_vpo_pld_selector_one_hot_A: assert property (@(posedge clk) disable iff ($sampled(rst !== 1'h0 || $isunknown(or_990))) or_990) else $fatal(0, "Selector concat.844 was expected to be one-hot, and is not.");
+  __xls_invariant_vpo_tx_selector_one_hot_A: assert property (@(posedge clk) disable iff ($sampled(rst !== 1'h0 || $isunknown(or_992))) or_992) else $fatal(0, "Selector st2_predicate_piece_2 was expected to be one-hot, and is not.");
+  `endif  // ASSERT_ON
+endmodule

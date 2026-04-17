@@ -15,12 +15,6 @@ def calculate_reference(matrix_fp: str, vec: list[int]):
                 res[r] += vec[c]*val
     return res
 
-def vec_int_func(mem: list, addr: int): 
-    packed_pld_str = ""
-    for stream in range(2):
-        packed_pld_str += f"{mem[addr*2 + stream]:0{8}x}"
-    return int(packed_pld_str, 16)
-
 class ListWrapper:
     def __init__(self, list, wrapper_func):
         self.list = list
@@ -39,7 +33,7 @@ async def test_single_cluster_sparse(dut):
                 ])
     total_hbm = hbm_channel.raw_to_cpsr_hbmchannel("/home/ayana/hisparse-xls/data/spmv1.json", "+1", "#", 4, 4, 2, 1, True)
     mlbramkwargs = {"latency": 2, "base_name": "ml_bram", "backing_memory": ListWrapper(hbm_channel.HBM_CHAN(total_hbm=total_hbm, chan=0, num_streams=2), hbm_channel.grab_binary_value)}
-    vlbramkwargs = {"latency": 2, "base_name": "vl_bram", "backing_memory": ListWrapper(list(range(8)), vec_int_func)}
+    vlbramkwargs = {"latency": 2, "base_name": "vl_bram", "backing_memory": ListWrapper(list(range(8)), hbm_channel.vec_int_func)}
     vau0bramkwargs = {"latency": 2, "base_name": "vau0_bram", "backing_memory": [0]*2}
     vau1bramkwargs = {"latency": 2, "base_name": "vau1_bram", "backing_memory": [0]*2}
     pe0bank = [0]*2

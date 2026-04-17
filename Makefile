@@ -60,6 +60,8 @@ clean:
 	cd hdl; mv single_cluster_bram_info_pipeline.sv /tmp/
 	cd hdl; mv single_cluster_opt_driver.sv /tmp/
 	cd hdl; mv single_cluster_opt_fpga_top.sv /tmp/
+	cd hdl; mv single_cluster_opt_fpga_top_wrapper.v /tmp/
+	cd hdl; mv single_cluster_opt_wrapper.v /tmp/
 	cd hdl; rm *
 	cd hdl; mv /tmp/single_cluster_opt.sv .
 	cd hdl; mv /tmp/single_cluster_actual.sv .
@@ -67,6 +69,8 @@ clean:
 	cd hdl; mv /tmp/single_cluster_bram_info_pipeline.sv .
 	cd hdl; mv /tmp/single_cluster_opt_driver.sv .
 	cd hdl; mv /tmp/single_cluster_opt_fpga_top.sv .
+	cd hdl; mv /tmp/single_cluster_opt_fpga_top_wrapper.v .
+	cd hdl; mv /tmp/single_cluster_opt_wrapper.v .
 
 ifeq ($(MODE),actual)
 all: sf sf_core arb ml vl vau vunpack pe cpacker cmerger kmerger
