@@ -108,23 +108,23 @@ ifeq ($(MODE),opt)
 CODEGEN_DSLX_PATH := $(OPT_CODEGEN_DSLX_PATH)
 II := 1
 OPT_LEVEL := --opt_level=3
-GENERIC_SYNCER_CODEGEN_FLAGS := --pipeline_stages=3 --worst_case_throughput=$(II) --delay_model=unit --reset=rst
-SF_CORE_CODEGEN_FLAGS := --pipeline_stages=3 --worst_case_throughput=$(II) --delay_model=unit --reset=rst --flop_inputs_kind=skid
-ARBITER_CODEGEN_FLAGS := --pipeline_stages=$(ARBITER_STAGES) --worst_case_throughput=$(II) --flop_inputs_kind=skid --delay_model=unit --reset=rst
-ML_RECV_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
-ML_SEND_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II) --flop_inputs_kind=skid
-ML_ADDR_ARBITER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
-ML_PLD_ARBITER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
-VL_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II) --flop_inputs_kind=skid
-VAU_SEND_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
-VAU_RECV_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
-VUNPACK_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
-PE_SEND_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
-PE_RECV_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
-PE_ADDR_ARBITER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
-CPACKER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
-CMERGER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
-KMERGER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=unit --reset=rst --worst_case_throughput=$(II)
+GENERIC_SYNCER_CODEGEN_FLAGS := --pipeline_stages=3 --worst_case_throughput=$(II) --delay_model=asap7 --reset=rst
+SF_CORE_CODEGEN_FLAGS := --pipeline_stages=3 --worst_case_throughput=$(II) --delay_model=asap7 --reset=rst --flop_inputs_kind=skid
+ARBITER_CODEGEN_FLAGS := --pipeline_stages=$(ARBITER_STAGES) --worst_case_throughput=$(II) --flop_inputs_kind=skid --delay_model=asap7 --reset=rst
+ML_RECV_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+ML_SEND_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II) --flop_inputs_kind=skid
+ML_ADDR_ARBITER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+ML_PLD_ARBITER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+VL_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II) --flop_inputs_kind=skid
+VAU_SEND_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+VAU_RECV_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+VUNPACK_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+PE_SEND_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+PE_RECV_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+PE_ADDR_ARBITER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+CPACKER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+CMERGER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+KMERGER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
 endif
 
 .PHONY: sf

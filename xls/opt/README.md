@@ -42,6 +42,9 @@ These changes just made it easier to optimize HiSparse in XLS
 1) Separation of Token Syncing from Main Proc Logic:
 - Adding logic in my procs to sync incoming tokens made the statemachine needlessly complicated, so I generalized the logic into procs that can be attached anywhere in the stream to ensure modules see synced streams at all times.
 
+2) Kernel result merger kernel_read_indx_mod u32 -> u3:
+- kernel_read_indx_mod is defined as a u32 % u32 operation which failed to meet timing severely at a conservative 100 mhz clock. So, i dropped it to u3s which means a kernel can only have 8 unique HBM channels and also means something else (i need to analyze the kmerger again). Honestly though these limitations are in streaming the final calculation out, NOT critical to the actual computation and do not limit the actual performance
+
 Minor changes
 - modeled the IO of the memories and banks to be 1 cycle
 - put skid puffer on sfcore and sf

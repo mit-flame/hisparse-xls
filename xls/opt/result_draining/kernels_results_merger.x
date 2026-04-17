@@ -23,10 +23,10 @@ pub proc kernels_results_merger<NUM_KERNELS: u32, OB_DIVIDED_BY_PACK_SIZE: u32, 
     init{(
         u32: 0,                         // 0 state
         u32: 0,                         // 1 saved current row partition number
-        zero!<u32[NUM_KERNELS]>(),      // 2 saved num hbm channels per kernel (ACTUALLY MUST BE A PREFIX SUM OF THIS TO MAKE THE IF CONDITION LOOP WORK BELOW)
-        u32: 0,                         // 3 sum of hbm channels per kernel
+        zero!<u3[NUM_KERNELS]>(),      // 2 saved num hbm channels per kernel (ACTUALLY MUST BE A PREFIX SUM OF THIS TO MAKE THE IF CONDITION LOOP WORK BELOW)
+        u3: 0,                         // 3 sum of hbm channels per kernel
         zero!<u1[NUM_KERNELS]>(),       // 4 got EOS from the kernels
-        u32: 0,                         // 5 kernel payload counter
+        u3: 0,                         // 5 kernel payload counter
         u32: 0,                         // 6 write out counter
         join(),                         // 7 order token
         // substate
@@ -34,7 +34,7 @@ pub proc kernels_results_merger<NUM_KERNELS: u32, OB_DIVIDED_BY_PACK_SIZE: u32, 
 
     )}
 
-    next(state: (u32, u32, u32[NUM_KERNELS], u32, u1[NUM_KERNELS], u32, u32, token, uN[PAYLOAD_ONE_BITWIDTH][NUM_KERNELS])) {
+    next(state: (u32, u32, u3[NUM_KERNELS], u3, u1[NUM_KERNELS], u3, u32, token, uN[PAYLOAD_ONE_BITWIDTH][NUM_KERNELS])) {
         let (hva_tx, hvp_tx, crp_rx, nhcek_rx, mvpo_rx) =
         match (state.0) {
             u32: 0 => {(false, false, true, true, zero!<u1[NUM_KERNELS]>())},
@@ -106,9 +106,14 @@ pub proc kernels_results_merger<NUM_KERNELS: u32, OB_DIVIDED_BY_PACK_SIZE: u32, 
                 let new_kernel_pld_count = u32: 0;
                 let new_write_out_count = u32: 0;
                 let new_state = u32: 1;
+                let new_nhcek_pld =
+                for (idx, pld) : (u32, u3[NUM_KERNELS]) in u32:0..NUM_KERNELS {
+                    let n_pld = update(pld, idx, nhcek_pld[idx] as u3);
+                    (n_pld)
+                }(zero!<u3[NUM_KERNELS]>());
                 (
-                    new_state, crp_pld, nhcek_pld, new_sum_hbm_channels, 
-                    new_got_eos, new_kernel_pld_count, new_write_out_count, state.8
+                    new_state, crp_pld, new_nhcek_pld, new_sum_hbm_channels as u3, 
+                    new_got_eos, new_kernel_pld_count as u3, new_write_out_count, state.8
                 )
             },
             u32: 1 => {
@@ -117,7 +122,7 @@ pub proc kernels_results_merger<NUM_KERNELS: u32, OB_DIVIDED_BY_PACK_SIZE: u32, 
             },
             u32: 2 => {
                 let kernel_read_indx_mod = state.5 % state.3;
-                let new_kernel_read_indx = state.5 + u32: 1;
+                let new_kernel_read_indx = state.5 + u3: 1;
                 let (kernel_read_indx, kernel_read_valid) = 
                 for (idx, (read_indx, valid)) : (u32, (u32, u1)) in u32:0..NUM_KERNELS{
                     let rev_indx = NUM_KERNELS - u32: 1 - idx; // reversed to prioritize earlier indices just like the source code
