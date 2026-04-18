@@ -1,3 +1,4 @@
+`default_nettype none
 module __t__shuffler_core_0_next(
   input wire clk,
   input wire rst,
@@ -38,8 +39,6 @@ module __t__shuffler_core_0_next(
   reg [3:0] ____state_2;
   reg ____state_5;
   reg ____state_3;
-  reg p0_valid;
-  reg p1_valid;
   reg __t__multistream_payload_o__0_has_been_sent_reg;
   reg __t__arbiter_payload_type_two_i_has_been_sent_reg;
   reg __t__arbiter_i_valid_has_been_sent_reg;
@@ -121,13 +120,11 @@ module __t__shuffler_core_0_next(
   wire [95:0] arptt_pld[2];
   wire t__arbiter_combined_out_from_skid_rdy;
   wire t__multistream_payload_i__0_from_skid_rdy;
-  wire and_1202;
+  wire and_1188;
   wire t__multistream_payload_i__1_from_skid_rdy;
-  wire and_1203;
+  wire and_1189;
   wire eq_1126;
   wire eq_1127;
-  wire and_1189;
-  wire and_1190;
   wire t__arbiter_combined_out_data_valid_load_en;
   wire t__arbiter_combined_out_to_is_not_rdy;
   wire t__multistream_payload_i__0_data_valid_load_en;
@@ -136,7 +133,7 @@ module __t__shuffler_core_0_next(
   wire t__multistream_payload_i__1_to_is_not_rdy;
   wire and_1094;
   wire ____state_2__at_most_one_next_value;
-  wire [1:0] concat_1192;
+  wire [1:0] concat_1170;
   wire [3:0] unexpand_for_next_value_299_2__1_case_1_case_1;
   wire [3:0] unexpand_for_next_value_299_2__1_case_1_case_0;
   wire __t__multistream_payload_o__0_valid_and_ready_txfr;
@@ -158,14 +155,12 @@ module __t__shuffler_core_0_next(
   wire [95:0] p__1;
   wire [30:0] leading_bits___state_3;
   wire [95:0] sel_1118;
-  wire or_1382;
-  wire p1_enable;
-  wire p0_enable;
+  wire or_1368;
   wire new_sent_eod;
   wire or_1142;
   wire or_1143;
-  wire [3:0] one_hot_sel_1193;
-  wire or_1194;
+  wire [3:0] one_hot_sel_1171;
+  wire and_1185;
   wire unexpand_for_next_value_299_3__1;
   wire __t__arbiter_i_valid_not_stage_load;
   wire __t__multistream_payload_o__0_has_been_sent_reg_load_en;
@@ -243,22 +238,20 @@ module __t__shuffler_core_0_next(
   assign arptt_pld[1] = t__arbiter_combined_out_select[261:166];
   assign t__arbiter_combined_out_from_skid_rdy = ~__t__arbiter_combined_out_valid_skid_reg;
   assign t__multistream_payload_i__0_from_skid_rdy = ~__t__multistream_payload_i__0_valid_skid_reg;
-  assign and_1202 = p0_all_active_outputs_ready & read_input_predicate;
+  assign and_1188 = p0_all_active_outputs_ready & read_input_predicate;
   assign t__multistream_payload_i__1_from_skid_rdy = ~__t__multistream_payload_i__1_valid_skid_reg;
-  assign and_1203 = p0_all_active_outputs_ready & read_input_predicate__1;
+  assign and_1189 = p0_all_active_outputs_ready & read_input_predicate__1;
   assign eq_1126 = t__multistream_payload_i__0_select[95:94] == 2'h2;
   assign eq_1127 = t__multistream_payload_i__1_select[95:94] == 2'h2;
-  assign and_1189 = nor_1098 & p0_all_active_outputs_ready;
-  assign and_1190 = send_eod_predicate & p0_all_active_outputs_ready;
   assign t__arbiter_combined_out_data_valid_load_en = t__arbiter_combined_out_vld & t__arbiter_combined_out_from_skid_rdy;
   assign t__arbiter_combined_out_to_is_not_rdy = ~p0_all_active_outputs_ready;
   assign t__multistream_payload_i__0_data_valid_load_en = t__multistream_payload_i__0_vld & t__multistream_payload_i__0_from_skid_rdy;
-  assign t__multistream_payload_i__0_to_is_not_rdy = ~and_1202;
+  assign t__multistream_payload_i__0_to_is_not_rdy = ~and_1188;
   assign t__multistream_payload_i__1_data_valid_load_en = t__multistream_payload_i__1_vld & t__multistream_payload_i__1_from_skid_rdy;
-  assign t__multistream_payload_i__1_to_is_not_rdy = ~and_1203;
+  assign t__multistream_payload_i__1_to_is_not_rdy = ~and_1189;
   assign and_1094 = ____state_5 & eq_1074;
   assign ____state_2__at_most_one_next_value = nor_1098 == one_hot_1119[1] & send_eod_predicate == one_hot_1119[0];
-  assign concat_1192 = {and_1189, and_1190};
+  assign concat_1170 = {nor_1098 & p0_all_active_outputs_ready, send_eod_predicate & p0_all_active_outputs_ready};
   assign unexpand_for_next_value_299_2__1_case_1_case_1 = 4'ha;
   assign unexpand_for_next_value_299_2__1_case_1_case_0 = ____state_2 + 4'hf;
   assign __t__multistream_payload_o__0_valid_and_ready_txfr = __t__multistream_payload_o__0_not_has_been_sent & t__multistream_payload_o__0_load_en;
@@ -269,25 +262,23 @@ module __t__shuffler_core_0_next(
   assign t__arbiter_combined_out_data_is_sent_to = __t__arbiter_combined_out_valid_reg & p0_all_active_outputs_ready & t__arbiter_combined_out_from_skid_rdy;
   assign t__arbiter_combined_out_skid_data_load_en = __t__arbiter_combined_out_valid_reg & t__arbiter_combined_out_data_valid_load_en & t__arbiter_combined_out_to_is_not_rdy;
   assign t__arbiter_combined_out_skid_valid_set_zero = __t__arbiter_combined_out_valid_skid_reg & p0_all_active_outputs_ready;
-  assign t__multistream_payload_i__0_data_is_sent_to = __t__multistream_payload_i__0_valid_reg & and_1202 & t__multistream_payload_i__0_from_skid_rdy;
+  assign t__multistream_payload_i__0_data_is_sent_to = __t__multistream_payload_i__0_valid_reg & and_1188 & t__multistream_payload_i__0_from_skid_rdy;
   assign t__multistream_payload_i__0_skid_data_load_en = __t__multistream_payload_i__0_valid_reg & t__multistream_payload_i__0_data_valid_load_en & t__multistream_payload_i__0_to_is_not_rdy;
-  assign t__multistream_payload_i__0_skid_valid_set_zero = __t__multistream_payload_i__0_valid_skid_reg & and_1202;
-  assign t__multistream_payload_i__1_data_is_sent_to = __t__multistream_payload_i__1_valid_reg & and_1203 & t__multistream_payload_i__1_from_skid_rdy;
+  assign t__multistream_payload_i__0_skid_valid_set_zero = __t__multistream_payload_i__0_valid_skid_reg & and_1188;
+  assign t__multistream_payload_i__1_data_is_sent_to = __t__multistream_payload_i__1_valid_reg & and_1189 & t__multistream_payload_i__1_from_skid_rdy;
   assign t__multistream_payload_i__1_skid_data_load_en = __t__multistream_payload_i__1_valid_reg & t__multistream_payload_i__1_data_valid_load_en & t__multistream_payload_i__1_to_is_not_rdy;
-  assign t__multistream_payload_i__1_skid_valid_set_zero = __t__multistream_payload_i__1_valid_skid_reg & and_1203;
+  assign t__multistream_payload_i__1_skid_valid_set_zero = __t__multistream_payload_i__1_valid_skid_reg & and_1189;
   assign sel_1108 = and_1094 ? 96'hc000_0000_0000_0000_0000_0000 : arptt_pld[array_index_1068 > 32'h0000_0001 ? 1'h1 : array_index_1068[0:0]] & {96{axv_pld[1'h0] & aoiv_pld[array_index_1068 > 32'h0000_0001 ? 1'h1 : array_index_1068[0:0]]}};
   assign p = array_index_1046 ? arptt_pld[1'h0] : t__multistream_payload_i__0_select & {96{~eq_1074}};
   assign p__1 = array_index_1055 ? arptt_pld[1'h1] : t__multistream_payload_i__1_select & {96{t__multistream_payload_i__1_select[95:94] != 2'h3}};
   assign leading_bits___state_3 = 31'h0000_0000;
   assign sel_1118 = and_1094 ? 96'hc000_0000_0000_0000_0000_0000 : arptt_pld[array_index_1073 > 32'h0000_0001 ? 1'h1 : array_index_1073[0:0]] & {96{axv_pld[1'h1] & aoiv_pld[array_index_1073 > 32'h0000_0001 ? 1'h1 : array_index_1073[0:0]]}};
-  assign or_1382 = ~p0_all_active_outputs_ready | ____state_2__at_most_one_next_value | rst;
-  assign p1_enable = 1'h1;
-  assign p0_enable = 1'h1;
+  assign or_1368 = ~p0_all_active_outputs_ready | ____state_2__at_most_one_next_value | rst;
   assign new_sent_eod = send_eod_predicate & ~____state_5 | ~(eq_1074 | ~____state_5);
   assign or_1142 = eq_1126 | ~(eq_1126 | eq_1089 | ~____state_1_0);
   assign or_1143 = eq_1127 | ~(eq_1127 | eq_1089 | ~____state_1_1);
-  assign one_hot_sel_1193 = unexpand_for_next_value_299_2__1_case_1_case_1 & {4{concat_1192[0]}} | unexpand_for_next_value_299_2__1_case_1_case_0 & {4{concat_1192[1]}};
-  assign or_1194 = and_1189 | and_1190;
+  assign one_hot_sel_1171 = unexpand_for_next_value_299_2__1_case_1_case_1 & {4{concat_1170[0]}} | unexpand_for_next_value_299_2__1_case_1_case_0 & {4{concat_1170[1]}};
+  assign and_1185 = (nor_1098 | send_eod_predicate) & p0_all_active_outputs_ready;
   assign unexpand_for_next_value_299_3__1 = ~____state_3;
   assign __t__arbiter_i_valid_not_stage_load = ~p0_all_active_outputs_ready;
   assign __t__multistream_payload_o__0_has_been_sent_reg_load_en = __t__multistream_payload_o__0_valid_and_ready_txfr | p0_all_active_outputs_ready;
@@ -315,8 +306,6 @@ module __t__shuffler_core_0_next(
       ____state_2 <= 4'ha;
       ____state_5 <= 1'h0;
       ____state_3 <= 1'h0;
-      p0_valid <= 1'h0;
-      p1_valid <= 1'h0;
       __t__multistream_payload_o__0_has_been_sent_reg <= 1'h0;
       __t__arbiter_payload_type_two_i_has_been_sent_reg <= 1'h0;
       __t__arbiter_i_valid_has_been_sent_reg <= 1'h0;
@@ -347,11 +336,9 @@ module __t__shuffler_core_0_next(
     end else begin
       ____state_1_0 <= p0_all_active_outputs_ready ? or_1142 : ____state_1_0;
       ____state_1_1 <= p0_all_active_outputs_ready ? or_1143 : ____state_1_1;
-      ____state_2 <= or_1194 ? one_hot_sel_1193 : ____state_2;
+      ____state_2 <= and_1185 ? one_hot_sel_1171 : ____state_2;
       ____state_5 <= p0_all_active_outputs_ready ? new_sent_eod : ____state_5;
       ____state_3 <= p0_all_active_outputs_ready ? unexpand_for_next_value_299_3__1 : ____state_3;
-      p0_valid <= p0_enable ? p0_all_active_outputs_ready : p0_valid;
-      p1_valid <= p1_enable ? p0_valid : p1_valid;
       __t__multistream_payload_o__0_has_been_sent_reg <= __t__multistream_payload_o__0_has_been_sent_reg_load_en ? __t__arbiter_i_valid_not_stage_load : __t__multistream_payload_o__0_has_been_sent_reg;
       __t__arbiter_payload_type_two_i_has_been_sent_reg <= __t__arbiter_payload_type_two_i_has_been_sent_reg_load_en ? __t__arbiter_i_valid_not_stage_load : __t__arbiter_payload_type_two_i_has_been_sent_reg;
       __t__arbiter_i_valid_has_been_sent_reg <= __t__arbiter_i_valid_has_been_sent_reg_load_en ? __t__arbiter_i_valid_not_stage_load : __t__arbiter_i_valid_has_been_sent_reg;
@@ -395,6 +382,7 @@ module __t__shuffler_core_0_next(
   assign t__multistream_payload_o__1 = __t__multistream_payload_o__1_reg;
   assign t__multistream_payload_o__1_vld = __t__multistream_payload_o__1_valid_reg;
   `ifdef ASSERT_ON
-  ____state_2__at_most_one_next_value_assert: assert property (@(posedge clk) disable iff ($sampled(rst !== 1'h0 || $isunknown(or_1382))) or_1382) else $fatal(0, "More than one next_value fired for state element: __state_2");
+  ____state_2__at_most_one_next_value_assert: assert property (@(posedge clk) disable iff ($sampled(rst !== 1'h0 || $isunknown(or_1368))) or_1368) else $fatal(0, "More than one next_value fired for state element: __state_2");
   `endif  // ASSERT_ON
 endmodule
+`default_nettype wire

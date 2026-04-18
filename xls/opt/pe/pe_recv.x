@@ -40,7 +40,7 @@ pub proc pe_recv<NUM_STREAMS: u32, QUEUE_DEPTH: u32>
             u32: 1 => {
                 let (new_tok, spld) = recv(state.3, unified_pld);
                 let base = pe_helper::priority_grab<QUEUE_DEPTH>(state.2, spld.addr, spld.mem_base);
-                let incr = ((spld.matrix_val as s32) * (spld.vector_val as s32));
+                let incr = ((spld.matrix_val as s16) * (spld.vector_val as s16)) as s32;
                 let update = (spld.matrix_val != u32: 0) as u2 ++ spld.addr ++ ((base as s32) + incr) as u32;
                 let new_queue = pe_helper::push_front<QUEUE_DEPTH>(state.2, update);
                 let update_pld = pe_helper::StreamAddr{read_or_write: u1: 1, addr: spld.addr as u29, write_pld: update[0+:u32], ..zero!<pe_helper::StreamAddr>()};

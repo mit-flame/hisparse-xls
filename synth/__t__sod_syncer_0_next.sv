@@ -1,3 +1,4 @@
+`default_nettype none
 module __t__sod_syncer_0_next(
   input wire clk,
   input wire rst,
@@ -16,8 +17,6 @@ module __t__sod_syncer_0_next(
 );
   reg ____state_0_0;
   reg ____state_0_1;
-  reg p0_valid;
-  reg p1_valid;
   reg __t__multistream_payload_o__0_has_been_sent_reg;
   reg __t__multistream_payload_o__1_has_been_sent_reg;
   reg [95:0] __t__multistream_payload_i__0_reg;
@@ -58,8 +57,6 @@ module __t__sod_syncer_0_next(
   wire [95:0] spld__3;
   wire t__multistream_payload_i__0_load_en;
   wire t__multistream_payload_i__1_load_en;
-  wire p1_enable;
-  wire p0_enable;
   wire and_420;
   wire and_421;
   wire __t__multistream_payload_o__0_not_stage_load;
@@ -97,8 +94,6 @@ module __t__sod_syncer_0_next(
   assign spld__3 = t__multistream_payload_i__1_select & {96{~eq_404}};
   assign t__multistream_payload_i__0_load_en = t__multistream_payload_i__0_vld & t__multistream_payload_i__0_valid_load_en;
   assign t__multistream_payload_i__1_load_en = t__multistream_payload_i__1_vld & t__multistream_payload_i__1_valid_load_en;
-  assign p1_enable = 1'h1;
-  assign p0_enable = 1'h1;
   assign and_420 = ~and_410 & or_406;
   assign and_421 = ~and_410 & or_407;
   assign __t__multistream_payload_o__0_not_stage_load = ~p0_all_active_outputs_ready;
@@ -110,8 +105,6 @@ module __t__sod_syncer_0_next(
     if (rst) begin
       ____state_0_0 <= 1'h0;
       ____state_0_1 <= 1'h0;
-      p0_valid <= 1'h0;
-      p1_valid <= 1'h0;
       __t__multistream_payload_o__0_has_been_sent_reg <= 1'h0;
       __t__multistream_payload_o__1_has_been_sent_reg <= 1'h0;
       __t__multistream_payload_i__0_reg <= 96'h0000_0000_0000_0000_0000_0000;
@@ -125,8 +118,6 @@ module __t__sod_syncer_0_next(
     end else begin
       ____state_0_0 <= p0_all_active_outputs_ready ? and_420 : ____state_0_0;
       ____state_0_1 <= p0_all_active_outputs_ready ? and_421 : ____state_0_1;
-      p0_valid <= p0_enable ? p0_all_active_outputs_ready : p0_valid;
-      p1_valid <= p1_enable ? p0_valid : p1_valid;
       __t__multistream_payload_o__0_has_been_sent_reg <= __t__multistream_payload_o__0_has_been_sent_reg_load_en ? __t__multistream_payload_o__0_not_stage_load : __t__multistream_payload_o__0_has_been_sent_reg;
       __t__multistream_payload_o__1_has_been_sent_reg <= __t__multistream_payload_o__1_has_been_sent_reg_load_en ? __t__multistream_payload_o__0_not_stage_load : __t__multistream_payload_o__1_has_been_sent_reg;
       __t__multistream_payload_i__0_reg <= t__multistream_payload_i__0_load_en ? t__multistream_payload_i__0 : __t__multistream_payload_i__0_reg;
@@ -146,3 +137,4 @@ module __t__sod_syncer_0_next(
   assign t__multistream_payload_o__1 = __t__multistream_payload_o__1_reg;
   assign t__multistream_payload_o__1_vld = __t__multistream_payload_o__1_valid_reg;
 endmodule
+`default_nettype wire

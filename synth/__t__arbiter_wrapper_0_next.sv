@@ -1,3 +1,4 @@
+`default_nettype none
 module __t__arbiter_wrapper_0_next(
   input wire clk,
   input wire rst,
@@ -225,3 +226,4 @@ module __t__arbiter_wrapper_0_next(
   assign t__payload_rdy = t__payload_from_skid_rdy;
   assign t__rotate_offset_rdy = t__rotate_offset_from_skid_rdy;
 endmodule
+`default_nettype wire

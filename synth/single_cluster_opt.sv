@@ -1,3 +1,4 @@
+`default_nettype none
 module single_cluster_opt(
   input wire clk,
   input wire rst,
@@ -875,5 +876,5 @@ __t__kernels_results_merger_0_next kmerger(
   .t__multikernel_vector_payload_one__0_rdy(kmerger_t__multikernel_vector_payload_one__0_rdy),
   .t__num_hbm_channels_each_kernel_rdy(kmerger_t__num_hbm_channels_each_kernel_rdy)
 );
-
 endmodule
+`default_nettype wire

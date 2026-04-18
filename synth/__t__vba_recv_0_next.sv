@@ -1,3 +1,4 @@
+`default_nettype none
 module __t__vba_recv_0_next(
   input wire clk,
   input wire rst,
@@ -9,8 +10,6 @@ module __t__vba_recv_0_next(
   output wire t__streaming_pld_rdy
 );
   wire [95:0] __t__streaming_pld_reg_init = {2'h0, 30'h0000_0000, 32'h0000_0000, 32'h0000_0000};
-  reg p0_valid;
-  reg p1_valid;
   reg [95:0] __t__streaming_pld_reg;
   reg __t__streaming_pld_valid_reg;
   reg [95:0] __t__payload_type_three_reg;
@@ -26,8 +25,6 @@ module __t__vba_recv_0_next(
   wire [31:0] spld_matrix_pld;
   wire t__streaming_pld_valid_load_en;
   wire t__streaming_pld_load_en;
-  wire p1_enable;
-  wire p0_enable;
   wire [95:0] opld;
   assign t__payload_type_three_valid_inv = ~__t__payload_type_three_valid_reg;
   assign t__payload_type_three_valid_load_en = t__payload_type_three_rdy | t__payload_type_three_valid_inv;
@@ -40,20 +37,14 @@ module __t__vba_recv_0_next(
   assign spld_matrix_pld = __t__streaming_pld_reg[31:0];
   assign t__streaming_pld_valid_load_en = p0_stage_done | t__streaming_pld_valid_inv;
   assign t__streaming_pld_load_en = t__streaming_pld_vld & t__streaming_pld_valid_load_en;
-  assign p1_enable = 1'h1;
-  assign p0_enable = 1'h1;
   assign opld = spld_commands != 2'h0 ? {spld_commands, 94'h0000_0000_0000_0000_0000_0000} : {2'h0, spld_row_index, spld_vector, spld_matrix_pld};
   always_ff @ (posedge clk) begin
     if (rst) begin
-      p0_valid <= 1'h0;
-      p1_valid <= 1'h0;
       __t__streaming_pld_reg <= __t__streaming_pld_reg_init;
       __t__streaming_pld_valid_reg <= 1'h0;
       __t__payload_type_three_reg <= 96'h0000_0000_0000_0000_0000_0000;
       __t__payload_type_three_valid_reg <= 1'h0;
     end else begin
-      p0_valid <= p0_enable ? p0_stage_done : p0_valid;
-      p1_valid <= p1_enable ? p0_valid : p1_valid;
       __t__streaming_pld_reg <= t__streaming_pld_load_en ? t__streaming_pld : __t__streaming_pld_reg;
       __t__streaming_pld_valid_reg <= t__streaming_pld_valid_load_en ? t__streaming_pld_vld : __t__streaming_pld_valid_reg;
       __t__payload_type_three_reg <= t__payload_type_three_load_en ? opld : __t__payload_type_three_reg;
@@ -64,3 +55,4 @@ module __t__vba_recv_0_next(
   assign t__payload_type_three_vld = __t__payload_type_three_valid_reg;
   assign t__streaming_pld_rdy = t__streaming_pld_load_en;
 endmodule
+`default_nettype wire

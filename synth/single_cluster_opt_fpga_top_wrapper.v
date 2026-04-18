@@ -1,3 +1,4 @@
+`default_nettype none
 module single_cluster_opt_fpga_top_wrapper(
     input wire clk,
     input wire reset,
@@ -131,3 +132,4 @@ module single_cluster_opt_fpga_top_wrapper(
     );
 
 endmodule
+`default_nettype wire

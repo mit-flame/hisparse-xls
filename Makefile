@@ -14,7 +14,7 @@ NUM_KERNELS := 1
 ARBITER_STAGES := 5
 VB_SIZE := 4
 OB_SIZE := 4
-QUEUE_DEPTH := 5 # assuming read is 2 cycle write is 3 cycle
+QUEUE_DEPTH := 3 # assuming read is 2 cycle write is 3 cycle
 
 # presets for spmv 3
 # NUM_STREAMS := 2
@@ -108,23 +108,23 @@ ifeq ($(MODE),opt)
 CODEGEN_DSLX_PATH := $(OPT_CODEGEN_DSLX_PATH)
 II := 1
 OPT_LEVEL := --opt_level=3
-GENERIC_SYNCER_CODEGEN_FLAGS := --pipeline_stages=3 --worst_case_throughput=$(II) --delay_model=asap7 --reset=rst
-SF_CORE_CODEGEN_FLAGS := --pipeline_stages=3 --worst_case_throughput=$(II) --delay_model=asap7 --reset=rst --flop_inputs_kind=skid
+GENERIC_SYNCER_CODEGEN_FLAGS :=  --clock_period_ps=1500 --worst_case_throughput=$(II) --delay_model=asap7 --reset=rst
+SF_CORE_CODEGEN_FLAGS :=  --clock_period_ps=1500 --worst_case_throughput=$(II) --delay_model=asap7 --reset=rst --flop_inputs_kind=skid
 ARBITER_CODEGEN_FLAGS := --pipeline_stages=$(ARBITER_STAGES) --worst_case_throughput=$(II) --flop_inputs_kind=skid --delay_model=asap7 --reset=rst
-ML_RECV_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
-ML_SEND_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II) --flop_inputs_kind=skid
-ML_ADDR_ARBITER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
-ML_PLD_ARBITER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
-VL_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II) --flop_inputs_kind=skid
-VAU_SEND_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
-VAU_RECV_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
-VUNPACK_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
-PE_SEND_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
-PE_RECV_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
-PE_ADDR_ARBITER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
-CPACKER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
-CMERGER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
-KMERGER_CODEGEN_FLAGS := --pipeline_stages=3 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+ML_RECV_CODEGEN_FLAGS :=  --clock_period_ps=1500 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+ML_SEND_CODEGEN_FLAGS :=  --clock_period_ps=1500 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II) --flop_inputs_kind=skid
+ML_ADDR_ARBITER_CODEGEN_FLAGS :=  --clock_period_ps=1500 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+ML_PLD_ARBITER_CODEGEN_FLAGS :=  --clock_period_ps=1500 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+VL_CODEGEN_FLAGS :=  --clock_period_ps=1500 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II) --flop_inputs_kind=skid
+VAU_SEND_CODEGEN_FLAGS :=  --clock_period_ps=1500 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+VAU_RECV_CODEGEN_FLAGS :=  --clock_period_ps=1500 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+VUNPACK_CODEGEN_FLAGS :=  --clock_period_ps=1500 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+PE_SEND_CODEGEN_FLAGS :=  --clock_period_ps=1500 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+PE_RECV_CODEGEN_FLAGS :=  --clock_period_ps=1500 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+PE_ADDR_ARBITER_CODEGEN_FLAGS :=  --clock_period_ps=1500 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+CPACKER_CODEGEN_FLAGS :=  --clock_period_ps=1500 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+CMERGER_CODEGEN_FLAGS :=  --clock_period_ps=1500 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
+KMERGER_CODEGEN_FLAGS :=  --clock_period_ps=1500 --delay_model=asap7 --reset=rst --worst_case_throughput=$(II)
 endif
 
 .PHONY: sf
@@ -136,6 +136,8 @@ hdl/__t__shuffler_0_next.sv: xls/$(MODE)/shuffle/shuffler.x
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=shuffler > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(SF_CODEGEN_FLAGS) t.opt.ir > __t__shuffler_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__shuffler_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__shuffler_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -151,6 +153,8 @@ hdl/__t__sod_syncer_0_next.sv: xls/$(MODE)/shuffle/generic_syncer.x
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=sod_syncer > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(GENERIC_SYNCER_CODEGEN_FLAGS) t.opt.ir > __t__sod_syncer_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__sod_syncer_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__sod_syncer_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -166,6 +170,8 @@ hdl/__t__eos_syncer_0_next.sv: xls/$(MODE)/shuffle/generic_syncer.x
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=eos_syncer > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(GENERIC_SYNCER_CODEGEN_FLAGS) t.opt.ir > __t__eos_syncer_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__eos_syncer_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__eos_syncer_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -180,6 +186,8 @@ hdl/__t__shuffler_core_0_next.sv: xls/$(MODE)/shuffle/shuffler_core.x
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=shuffler_core > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(SF_CORE_CODEGEN_FLAGS) t.opt.ir > __t__shuffler_core_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__shuffler_core_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__shuffler_core_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -193,6 +201,8 @@ hdl/__t__arbiter_wrapper_0_next.sv: xls/$(MODE)/shuffle/arbiter.x
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=arbiter_wrapper > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(ARBITER_CODEGEN_FLAGS) t.opt.ir > __t__arbiter_wrapper_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__arbiter_wrapper_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__arbiter_wrapper_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -206,6 +216,8 @@ hdl/__t__matrix_loader_recv_0_next.sv: xls/$(MODE)/matrix_loader/matrix_loader_r
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=matrix_loader_recv > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(ML_RECV_CODEGEN_FLAGS) t.opt.ir > __t__matrix_loader_recv_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__matrix_loader_recv_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__matrix_loader_recv_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -219,6 +231,8 @@ hdl/__t__matrix_loader_send_0_next.sv: xls/$(MODE)/matrix_loader/matrix_loader_s
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=matrix_loader_send > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(ML_SEND_CODEGEN_FLAGS) t.opt.ir > __t__matrix_loader_send_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__matrix_loader_send_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__matrix_loader_send_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -230,6 +244,8 @@ hdl/__t__matrix_loader_addr_arbiter_0_next.sv: xls/$(MODE)/matrix_loader/matrix_
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=matrix_loader_addr_arbiter > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(ML_ADDR_ARBITER_CODEGEN_FLAGS) t.opt.ir > __t__matrix_loader_addr_arbiter_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__matrix_loader_addr_arbiter_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__matrix_loader_addr_arbiter_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -243,6 +259,8 @@ hdl/__t__matrix_loader_pld_arbiter_0_next.sv: xls/$(MODE)/matrix_loader/matrix_l
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=matrix_loader_pld_arbiter > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(ML_PLD_ARBITER_CODEGEN_FLAGS) t.opt.ir > __t__matrix_loader_pld_arbiter_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__matrix_loader_pld_arbiter_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__matrix_loader_pld_arbiter_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -256,6 +274,8 @@ hdl/__t__matrix_loader_0_next.sv: xls/$(MODE)/matrix_loader/matrix_loader.x
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=matrix_loader > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(ML_CODEGEN_FLAGS) t.opt.ir > __t__matrix_loader_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__matrix_loader_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__matrix_loader_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -272,6 +292,8 @@ hdl/__t__vector_loader_0_next.sv: xls/$(MODE)/vector_loader/vector_loader.x
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=vector_loader > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(VL_CODEGEN_FLAGS) t.opt.ir > __t__vector_loader_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__vector_loader_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__vector_loader_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -286,6 +308,8 @@ hdl/__t__vecbuf_access_unit_0_next.sv: xls/$(MODE)/vector_loader/vector_buffer_a
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=vecbuf_access_unit > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(VECBUF_CODEGEN_FLAGS) t.opt.ir > __t__vecbuf_access_unit_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__vecbuf_access_unit_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__vecbuf_access_unit_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -300,6 +324,8 @@ hdl/__t__vba_send_0_next.sv: xls/$(MODE)/vector_loader/vba_send.x
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=vba_send > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(VAU_SEND_CODEGEN_FLAGS) t.opt.ir > __t__vba_send_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__vba_send_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__vba_send_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -311,6 +337,8 @@ hdl/__t__vba_recv_0_next.sv: xls/$(MODE)/vector_loader/vba_recv.x
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=vba_recv > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(VAU_RECV_CODEGEN_FLAGS) t.opt.ir > __t__vba_recv_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__vba_recv_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__vba_recv_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -322,6 +350,8 @@ hdl/__t__vba_addr_arbiter_0_next.sv: xls/$(MODE)/vector_loader/vba_addr_arbiter.
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=vba_addr_arbiter > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(VAU_RECV_CODEGEN_FLAGS) t.opt.ir > __t__vba_addr_arbiter_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__vba_addr_arbiter_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__vba_addr_arbiter_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -336,6 +366,8 @@ hdl/__t__vector_unpacker_0_next.sv: xls/$(MODE)/vector_loader/vector_unpacker.x
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=vector_unpacker > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(VUNPACK_CODEGEN_FLAGS) t.opt.ir > __t__vector_unpacker_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__vector_unpacker_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__vector_unpacker_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -350,6 +382,8 @@ hdl/__t__processing_engine_0_next.sv: xls/$(MODE)/pe/pe.x
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=processing_engine > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(PE_CODEGEN_FLAGS) t.opt.ir > __t__processing_engine_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__processing_engine_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__processing_engine_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -363,6 +397,8 @@ hdl/__t__pe_send_0_next.sv: xls/$(MODE)/pe/pe_send.x
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=pe_send > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(PE_SEND_CODEGEN_FLAGS) t.opt.ir > __t__pe_send_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__pe_send_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__pe_send_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -377,6 +413,8 @@ hdl/__t__pe_recv_0_next.sv: xls/$(MODE)/pe/pe_recv.x
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=pe_recv > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(PE_RECV_CODEGEN_FLAGS) t.opt.ir > __t__pe_recv_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__pe_recv_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__pe_recv_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -388,6 +426,8 @@ hdl/__t__pe_addr_arbiter_0_next.sv: xls/$(MODE)/pe/pe_addr_arbiter.x
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=pe_addr_arbiter > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(PE_ADDR_ARBITER_CODEGEN_FLAGS) t.opt.ir > __t__pe_addr_arbiter_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__pe_addr_arbiter_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__pe_addr_arbiter_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -402,6 +442,8 @@ hdl/__t__cluster_packer_0_next.sv: xls/$(MODE)/result_draining/cluster_packer.x
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=cluster_packer > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(CPACKER_CODEGEN_FLAGS) t.opt.ir > __t__cluster_packer_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__cluster_packer_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__cluster_packer_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -417,6 +459,8 @@ hdl/__t__clusters_results_merger_0_next.sv: xls/$(MODE)/result_draining/clusters
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=clusters_results_merger > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(CMERGER_CODEGEN_FLAGS) t.opt.ir > __t__clusters_results_merger_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__clusters_results_merger_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__clusters_results_merger_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir
@@ -433,6 +477,8 @@ hdl/__t__kernels_results_merger_0_next.sv: xls/$(MODE)/result_draining/kernels_r
 	cd hdl; $(IR_PATH) $(CODEGEN_DSLX_PATH) t.x --top=kernels_results_merger > t.ir
 	cd hdl; $(OPT_PATH) $(OPT_LEVEL) t.ir > t.opt.ir
 	cd hdl; $(CODEGEN_PATH) $(KMERGER_CODEGEN_FLAGS) t.opt.ir > __t__kernels_results_merger_0_next.sv
+	cd hdl; sed -i -e '1i`default_nettype none' __t__kernels_results_merger_0_next.sv
+	cd hdl; sed -i -e '$$a`default_nettype wire' __t__kernels_results_merger_0_next.sv
 	rm hdl/t.x
 	rm hdl/t.ir
 	rm hdl/t.opt.ir

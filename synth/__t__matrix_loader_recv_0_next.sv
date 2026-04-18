@@ -1,3 +1,4 @@
+`default_nettype none
 module __t__matrix_loader_recv_0_next(
   input wire clk,
   input wire rst,
@@ -16,8 +17,6 @@ module __t__matrix_loader_recv_0_next(
   reg ____state_0_1_0;
   reg [30:0] ____state_0_0_1;
   reg ____state_0_0_0;
-  reg p0_valid;
-  reg p1_valid;
   reg __t__multistream_payload_type_two__0_has_been_sent_reg;
   reg __t__multistream_payload_type_two__1_has_been_sent_reg;
   reg [159:0] __t__streaming_payload_one_reg;
@@ -60,10 +59,6 @@ module __t__matrix_loader_recv_0_next(
   wire [30:0] add_506;
   wire [31:0] data__1;
   wire t__streaming_payload_one_valid_inv;
-  wire and_570;
-  wire and_571;
-  wire and_577;
-  wire and_578;
   wire [29:0] pld_index;
   wire nor_502;
   wire [31:0] pld_data;
@@ -73,22 +68,18 @@ module __t__matrix_loader_recv_0_next(
   wire t__streaming_payload_one_valid_load_en;
   wire ____state_0_0_1__at_most_one_next_value;
   wire ____state_0_1_1__at_most_one_next_value;
-  wire [1:0] concat_572;
-  wire [1:0] concat_579;
+  wire [1:0] concat_550;
+  wire [1:0] concat_557;
   wire __t__multistream_payload_type_two__0_valid_and_all_active_outputs_ready;
   wire __t__multistream_payload_type_two__0_valid_and_ready_txfr;
   wire __t__multistream_payload_type_two__1_valid_and_ready_txfr;
   wire ne_511;
   wire [95:0] concat_513;
   wire t__streaming_payload_one_load_en;
-  wire or_643;
-  wire or_645;
-  wire p1_enable;
-  wire p0_enable;
-  wire [30:0] one_hot_sel_573;
-  wire or_574;
-  wire [30:0] one_hot_sel_580;
-  wire or_581;
+  wire or_630;
+  wire or_632;
+  wire [30:0] one_hot_sel_551;
+  wire [30:0] one_hot_sel_558;
   wire __t__multistream_payload_type_two__0_not_stage_load;
   wire __t__multistream_payload_type_two__0_has_been_sent_reg_load_en;
   wire __t__multistream_payload_type_two__1_has_been_sent_reg_load_en;
@@ -129,10 +120,6 @@ module __t__matrix_loader_recv_0_next(
   assign add_506 = sel_490[31:1] + array_index_477[30:0];
   assign data__1 = array_index_477[31:0];
   assign t__streaming_payload_one_valid_inv = ~__t__streaming_payload_one_valid_reg;
-  assign and_570 = ~next_row_marker_predicate & p0_stage_done;
-  assign and_571 = next_row_marker_predicate & p0_stage_done;
-  assign and_577 = ~next_row_marker_predicate__1 & p0_stage_done;
-  assign and_578 = next_row_marker_predicate__1 & p0_stage_done;
   assign pld_index = array_index_473[61:32] & {30{~next_row_marker_predicate}};
   assign nor_502 = ~(eq_474 | ~____state_0_0_0);
   assign pld_data = data & {32{~next_row_marker_predicate}};
@@ -142,22 +129,18 @@ module __t__matrix_loader_recv_0_next(
   assign t__streaming_payload_one_valid_load_en = p0_stage_done | t__streaming_payload_one_valid_inv;
   assign ____state_0_0_1__at_most_one_next_value = ~next_row_marker_predicate == one_hot_518[1] & next_row_marker_predicate == one_hot_518[0];
   assign ____state_0_1_1__at_most_one_next_value = ~next_row_marker_predicate__1 == one_hot_519[1] & next_row_marker_predicate__1 == one_hot_519[0];
-  assign concat_572 = {and_570, and_571};
-  assign concat_579 = {and_577, and_578};
+  assign concat_550 = {~next_row_marker_predicate & p0_stage_done, next_row_marker_predicate & p0_stage_done};
+  assign concat_557 = {~next_row_marker_predicate__1 & p0_stage_done, next_row_marker_predicate__1 & p0_stage_done};
   assign __t__multistream_payload_type_two__0_valid_and_all_active_outputs_ready = __t__streaming_payload_one_valid_reg & p0_all_active_outputs_ready;
   assign __t__multistream_payload_type_two__0_valid_and_ready_txfr = __t__multistream_payload_type_two__0_valid_and_not_has_been_sent & t__multistream_payload_type_two__0_load_en;
   assign __t__multistream_payload_type_two__1_valid_and_ready_txfr = __t__multistream_payload_type_two__1_valid_and_not_has_been_sent & t__multistream_payload_type_two__1_load_en;
   assign ne_511 = commands != 2'h0;
   assign concat_513 = {commands, 94'h0000_0000_0000_0000_0000_0000};
   assign t__streaming_payload_one_load_en = t__streaming_payload_one_vld & t__streaming_payload_one_valid_load_en;
-  assign or_643 = ~p0_stage_done | ____state_0_0_1__at_most_one_next_value | rst;
-  assign or_645 = ~p0_stage_done | ____state_0_1_1__at_most_one_next_value | rst;
-  assign p1_enable = 1'h1;
-  assign p0_enable = 1'h1;
-  assign one_hot_sel_573 = add_493 & {31{concat_572[0]}} | and_486 & {31{concat_572[1]}};
-  assign or_574 = and_570 | and_571;
-  assign one_hot_sel_580 = add_506 & {31{concat_579[0]}} | sel_490[31:1] & {31{concat_579[1]}};
-  assign or_581 = and_577 | and_578;
+  assign or_630 = ~p0_stage_done | ____state_0_0_1__at_most_one_next_value | rst;
+  assign or_632 = ~p0_stage_done | ____state_0_1_1__at_most_one_next_value | rst;
+  assign one_hot_sel_551 = add_493 & {31{concat_550[0]}} | and_486 & {31{concat_550[1]}};
+  assign one_hot_sel_558 = add_506 & {31{concat_557[0]}} | sel_490[31:1] & {31{concat_557[1]}};
   assign __t__multistream_payload_type_two__0_not_stage_load = ~__t__multistream_payload_type_two__0_valid_and_all_active_outputs_ready;
   assign __t__multistream_payload_type_two__0_has_been_sent_reg_load_en = __t__multistream_payload_type_two__0_valid_and_ready_txfr | __t__multistream_payload_type_two__0_valid_and_all_active_outputs_ready;
   assign __t__multistream_payload_type_two__1_has_been_sent_reg_load_en = __t__multistream_payload_type_two__1_valid_and_ready_txfr | __t__multistream_payload_type_two__0_valid_and_all_active_outputs_ready;
@@ -169,8 +152,6 @@ module __t__matrix_loader_recv_0_next(
       ____state_0_1_0 <= 1'h0;
       ____state_0_0_1 <= 31'h0000_0000;
       ____state_0_0_0 <= 1'h0;
-      p0_valid <= 1'h0;
-      p1_valid <= 1'h0;
       __t__multistream_payload_type_two__0_has_been_sent_reg <= 1'h0;
       __t__multistream_payload_type_two__1_has_been_sent_reg <= 1'h0;
       __t__streaming_payload_one_reg <= __t__streaming_payload_one_reg_init;
@@ -180,12 +161,10 @@ module __t__matrix_loader_recv_0_next(
       __t__multistream_payload_type_two__1_reg <= 96'h0000_0000_0000_0000_0000_0000;
       __t__multistream_payload_type_two__1_valid_reg <= 1'h0;
     end else begin
-      ____state_0_1_1 <= or_581 ? one_hot_sel_580 : ____state_0_1_1;
+      ____state_0_1_1 <= p0_stage_done ? one_hot_sel_558 : ____state_0_1_1;
       ____state_0_1_0 <= p0_stage_done ? bit_slice_516 : ____state_0_1_0;
-      ____state_0_0_1 <= or_574 ? one_hot_sel_573 : ____state_0_0_1;
+      ____state_0_0_1 <= p0_stage_done ? one_hot_sel_551 : ____state_0_0_1;
       ____state_0_0_0 <= p0_stage_done ? nor_502 : ____state_0_0_0;
-      p0_valid <= p0_enable ? p0_stage_done : p0_valid;
-      p1_valid <= p1_enable ? p0_valid : p1_valid;
       __t__multistream_payload_type_two__0_has_been_sent_reg <= __t__multistream_payload_type_two__0_has_been_sent_reg_load_en ? __t__multistream_payload_type_two__0_not_stage_load : __t__multistream_payload_type_two__0_has_been_sent_reg;
       __t__multistream_payload_type_two__1_has_been_sent_reg <= __t__multistream_payload_type_two__1_has_been_sent_reg_load_en ? __t__multistream_payload_type_two__0_not_stage_load : __t__multistream_payload_type_two__1_has_been_sent_reg;
       __t__streaming_payload_one_reg <= t__streaming_payload_one_load_en ? t__streaming_payload_one : __t__streaming_payload_one_reg;
@@ -202,7 +181,8 @@ module __t__matrix_loader_recv_0_next(
   assign t__multistream_payload_type_two__1_vld = __t__multistream_payload_type_two__1_valid_reg;
   assign t__streaming_payload_one_rdy = t__streaming_payload_one_load_en;
   `ifdef ASSERT_ON
-  ____state_0_0_1__at_most_one_next_value_assert: assert property (@(posedge clk) disable iff ($sampled(rst !== 1'h0 || $isunknown(or_643))) or_643) else $fatal(0, "More than one next_value fired for state element: __state_0_0_1");
-  ____state_0_1_1__at_most_one_next_value_assert: assert property (@(posedge clk) disable iff ($sampled(rst !== 1'h0 || $isunknown(or_645))) or_645) else $fatal(0, "More than one next_value fired for state element: __state_0_1_1");
+  ____state_0_0_1__at_most_one_next_value_assert: assert property (@(posedge clk) disable iff ($sampled(rst !== 1'h0 || $isunknown(or_630))) or_630) else $fatal(0, "More than one next_value fired for state element: __state_0_0_1");
+  ____state_0_1_1__at_most_one_next_value_assert: assert property (@(posedge clk) disable iff ($sampled(rst !== 1'h0 || $isunknown(or_632))) or_632) else $fatal(0, "More than one next_value fired for state element: __state_0_1_1");
   `endif  // ASSERT_ON
 endmodule
+`default_nettype wire

@@ -1,3 +1,4 @@
+`default_nettype none
 // read latency must not be 1
 module single_cluster_bram_info_pipeline
     #(
@@ -74,3 +75,4 @@ module single_cluster_bram_info_pipeline
         end
     end
 endmodule
+`default_nettype wire
