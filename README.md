@@ -7,6 +7,13 @@
 # Installation
 Update the xls paths in the makefile to attach to your XLS installation.
 
+# Repository Setup
+- /data/ holds matrices to pass into cocotb testbenches, as well as Xilinx/Vivado Coefficient files (*.coe) to prepopulate the BRAMs with particular matrix/vector values
+- /hdl/ holds the handwritten verilog toplevel files as well as the codegenerated HDL
+- /sim/ holds all the Cocotb simulation logic. /sim/* holds the cocotb testbenches for simulating the different HiSparse XLS versions as well as other miscellaneous tests and /sim/lib/ holds Cocotb helper classes and functions for procs and HiSparse modules
+- /synth/ is a particular snapshot of the HiSparse design synthesized on Vivado
+- /xls/ holds all of the DSLX source code, split into the ideal (first naive implementation), actual (second conservative implementation) and opt (optimized using split proc and channel multiplexing techniques) versions. These are further broken down into key modules within the HiSparse arch. /xls/thesis_examples/ hold bug examples for the particular XLS version used.
+
 # How To Run
 0) Ensure the above requirements are met on your system
 1) run "make" in repo root to see available commands...
